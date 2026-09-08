@@ -1,0 +1,10 @@
+{
+  "description": "Engage in a unique circular roll-and-move game that challenges players to strategize as they navigate from the center outward, perfect for family fun.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
