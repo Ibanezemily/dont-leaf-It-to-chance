@@ -1,0 +1,28 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="15.5782" height="98.4675" viewBox="0 0 15.5782 98.4675" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Rectangle 78" filter="url(#filter0_ng_0_76)">
+<path d="M8.43034 2.74454C8.45276 2.49425 8.51482 2.24911 8.61419 2.0183C9.62236 -0.323387 13.1104 0.357654 13.1636 2.90658L14.9947 90.5282C15.0791 94.5665 11.8286 97.8857 7.78935 97.8857C3.55523 97.8857 0.233379 94.253 0.611142 90.0357L8.43034 2.74454Z" fill="#9E8871"/>
+</g>
+<defs>
+<filter id="filter0_ng_0_76" x="0" y="1.19209e-07" width="15.5782" height="98.4675" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.85935765504837036 0.85935765504837036" stitchTiles="stitch" numOctaves="3" result="noise" seed="3473" />
+<feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+<feComponentTransfer in="alphaNoise" result="coloredNoise1">
+<feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+<feFlood flood-color="#FFFFFF" result="color1Flood" />
+<feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+<feMerge result="effect1_noise_0_76">
+<feMergeNode in="shape" />
+<feMergeNode in="color1" />
+</feMerge>
+<feTurbulence type="fractalNoise" baseFrequency="0.26306867599487305 0.26306867599487305" numOctaves="3" seed="5466" />
+<feDisplacementMap in="effect1_noise_0_76" scale="1.1636598110198975" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%" />
+<feMerge result="effect2_texture_0_76">
+<feMergeNode in="displacedImage"/>
+</feMerge>
+</filter>
+</defs>
+</svg>

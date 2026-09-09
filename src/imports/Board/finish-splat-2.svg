@@ -1,0 +1,28 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="69.1966" height="70.3325" viewBox="0 0 69.1966 70.3325" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Subtract" filter="url(#filter0_gn_0_93)">
+<path d="M23.6169 10.8369C30.2199 -6.84381 56.7258 0.257797 53.6042 18.8711C72.48 19.6906 73.924 47.0659 55.238 49.8418C60.3006 68.0288 34.6873 77.845 26.2605 60.9472C10.5136 71.368 -6.76064 50.06 6.71748 36.8408C-8.07755 25.0939 6.8601 2.10869 23.6169 10.8369Z" fill="#E65558"/>
+</g>
+<defs>
+<filter id="filter0_gn_0_93" x="1.33587e-08" y="-2.26428e-08" width="69.1966" height="70.3325" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.59699565172195435 0.59699565172195435" numOctaves="3" seed="5466" />
+<feDisplacementMap in="shape" scale="1.3324292898178101" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%" />
+<feMerge result="effect1_texture_0_93">
+<feMergeNode in="displacedImage"/>
+</feMerge>
+<feTurbulence type="fractalNoise" baseFrequency="0.78411364555358887 0.78411364555358887" stitchTiles="stitch" numOctaves="3" result="noise" seed="3473" />
+<feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+<feComponentTransfer in="alphaNoise" result="coloredNoise1">
+<feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="effect1_texture_0_93" in="coloredNoise1" result="noise1Clipped" />
+<feFlood flood-color="#CAECC3" result="color1Flood" />
+<feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+<feMerge result="effect2_noise_0_93">
+<feMergeNode in="effect1_texture_0_93" />
+<feMergeNode in="color1" />
+</feMerge>
+</filter>
+</defs>
+</svg>

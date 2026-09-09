@@ -5,7 +5,6 @@ import pinkCat      from '@/imports/image.png';
 import purpleCat    from '@/imports/image-1.png';
 import blueCat      from '@/imports/image-2.png';
 import orangeCat    from '@/imports/image-3.png';
-import g77Paths from '@/imports/Group77/svg-d7ctobszwm';
 import leafLogo from '@/imports/LeafLogo/leaf.svg';
 import leafIcon from '@/imports/LeafIcon/leaf-icon.svg';
 import cloudToken from '@/imports/Tokens/cloud.svg';
@@ -29,66 +28,28 @@ import redButterfly    from '@/imports/Butterflies/red.png';
 import purpleButterfly from '@/imports/Butterflies/purple.png';
 import blueButterfly   from '@/imports/Butterflies/blue.png';
 import orangeButterfly from '@/imports/Butterflies/orange.png';
+import {
+  ART, BLADES, BLADE_COLOR, BLADE_W, BLADE_H, BLADE_RX,
+  BOARD_W, BOARD_H, BOARD_CX, BOARD_CY, PAGE_BG,
+  FINISH_LABELS, START_LABEL,
+  TILES, RING_SEGS, TILE_R, TILE_SZ,
+  TILE_TRIVIA_FILL, TILE_PLAIN_FILL, TILE_INK, TILE_QMARK_SZ,
+  TILE_ELLIPSE, TILE_ELLIPSE_SZ,
+  GATES, gateAt, artTransform,
+} from '@/imports/Board';
 
 // ── Board geometry ─────────────────────────────────────────────────────────
-const SZ = 640;
-const BOARD_DISPLAY_SZ = 800; // on-screen render size — SVG scales the SZ-based geometry up to fit
-const CX = SZ / 2, CY = SZ / 2; // 320, 320
-const BOARD_R = 300;
-const CENTER_R = 48; // "Start" circle radius
+// All positions come straight from the Figma board (src/imports/Board/index.ts).
+// The SVG uses Figma's own 792×612 print-sheet coordinates and scales to fit.
+const CX = BOARD_CX, CY = BOARD_CY;
 
-// Ring tile circle radius (all tiles same size, matching 53px Figma tiles)
-const TILE_R = 26;
-
-// Mid-radius for each ring's tile centers
-const RING_MID = [145, 220, 278] as const;
-
-// Gate exit angle per ring (where the gate tab sticks out)
-// Spiral: inner exits upper-right → middle exits lower-right → outer exits left (WIN)
-const GATE_ANGLES = [
-  -Math.PI / 4,   // ring 0: ~1:30 o'clock (upper-right)
-  Math.PI / 4,    // ring 1: ~4:30 o'clock (lower-right)
-  Math.PI,        // ring 2: 9:00 o'clock (left) — FINISH
-];
-
-// Number of tiles per ring
-const RING_SEGS = [8, 12, 16] as const;
-
-// RINGS_DEF is kept for game-logic compatibility (segs, inner/outer used for gate sticker only)
-const RINGS_DEF = [
-  { inner: 119, outer: 171, segs: 8  }, // mid = 145
-  { inner: 194, outer: 246, segs: 12 }, // mid = 220
-  { inner: 252, outer: 304, segs: 16 }, // mid = 278
-] as const;
-
-// Starting angle so segment 0's midpoint falls at GATE_ANGLES[ri]
-const RING_START = RING_SEGS.map((n, i) => GATE_ANGLES[i] - Math.PI / n);
-
-type SegKind = 'gate' | 'trivia' | 'normal';
-
-function segKind(ri: number, seg: number): SegKind {
-  if (seg === 0) return 'gate';
-  return seg % 2 === 1 ? 'trivia' : 'normal';
-}
-
-// All [a1, a2] angle pairs for ring ri
-function ringSeg(ri: number): [number, number][] {
-  const n = RING_SEGS[ri];
-  const step = (2 * Math.PI) / n;
-  const off = RING_START[ri];
-  return Array.from({ length: n }, (_, j) => [off + j * step, off + (j + 1) * step]);
-}
-
-// Center point of segment seg on ring ri
-function segCenter(ri: number, seg: number): { x: number; y: number; a: number } {
-  const [a1, a2] = ringSeg(ri)[seg];
-  const a = (a1 + a2) / 2;
-  return { x: CX + RING_MID[ri] * Math.cos(a), y: CY + RING_MID[ri] * Math.sin(a), a };
+function tileKind(ri: number, seg: number) {
+  return TILES[ri][seg].kind;
 }
 
 function tileXY(ri: number, seg: number) {
-  const { x, y } = segCenter(ri, seg);
-  return { x, y };
+  const t = TILES[ri][seg];
+  return { x: t.x, y: t.y };
 }
 
 // ── Trivia questions — the 25 official cards from Figma ────────────────────
@@ -260,81 +221,6 @@ const DECK: DeckCard[] = [
 ];
 
 const FONT = "'Balsamiq Sans', sans-serif";
-
-// ── Gate sticker ───────────────────────────────────────────────────────────
-// Renders the "3🍃" gate badge tab + pink "finish" blob for every ring exit.
-function GateSticker({ ri }: { ri: number }) {
-  const ga     = GATE_ANGLES[ri];
-  const outerR = RINGS_DEF[ri].outer;
-
-  // Badge circle sits just outside the ring outer boundary
-  const badgeR = outerR + 26;
-  const bx = CX + badgeR * Math.cos(ga);
-  const by = CY + badgeR * Math.sin(ga);
-
-  // Finish blob further out — larger for the final ring
-  const finR  = outerR + (ri === 2 ? 72 : 60);
-  const finSz = ri === 2 ? 30 : 24;
-  const fx = CX + finR * Math.cos(ga);
-  const fy = CY + finR * Math.sin(ga);
-
-  return (
-    <g>
-      {/* White connector from ring edge out to the badge */}
-      <line
-        x1={CX + (outerR + 2) * Math.cos(ga)}
-        y1={CY + (outerR + 2) * Math.sin(ga)}
-        x2={CX + (badgeR + finSz - 4) * Math.cos(ga)}
-        y2={CY + (badgeR + finSz - 4) * Math.sin(ga)}
-        stroke="white" strokeWidth={14} strokeLinecap="round"
-      />
-
-      {/* White badge circle behind the gate icon */}
-      <circle cx={bx} cy={by} r={22} fill="white" />
-
-      {/* Gate badge — Group77 icon inlined (viewBox 0 0 13.635 11.5223, scaled 3.2×) */}
-      <g transform={`translate(${(bx - 13.635 * 1.6).toFixed(2)}, ${(by - 11.5223 * 1.6).toFixed(2)}) scale(3.2)`}>
-        <path d={g77Paths.p3b55e00} fill="#AECD55" />
-        <path d={g77Paths.p12b79700} fill="#6D8A1C" />
-        <path d={g77Paths.p3ed3f900} fill="#4B4B4B" />
-      </g>
-
-      {/* White arrow from badge to the finish blob */}
-      <line
-        x1={CX + (badgeR + 24) * Math.cos(ga)}
-        y1={CY + (badgeR + 24) * Math.sin(ga)}
-        x2={CX + (finR - finSz * 0.85) * Math.cos(ga)}
-        y2={CY + (finR - finSz * 0.85) * Math.sin(ga)}
-        stroke="white" strokeWidth={5} strokeLinecap="round"
-        markerEnd="url(#darr)"
-      />
-
-      {/* Pink "finish" flower blob */}
-      {([0,1,2,3,4] as const).map(i => {
-        const ba = (i / 5) * Math.PI * 2;
-        const blobR = finSz * 0.72;
-        return (
-          <circle key={i}
-            cx={fx + blobR * Math.cos(ba)} cy={fy + blobR * Math.sin(ba)}
-            r={finSz * 0.62}
-            fill={ri === 2 ? '#E84855' : '#E88C95'}
-            opacity={ri === 2 ? 1 : 0.88}
-          />
-        );
-      })}
-      <circle cx={fx} cy={fy} r={finSz * 0.7}
-        fill={ri === 2 ? '#E84855' : '#E88C95'}
-        opacity={ri === 2 ? 1 : 0.88}
-      />
-      <text x={fx} y={fy}
-        textAnchor="middle" dominantBaseline="central"
-        fontSize={ri === 2 ? 12 : 10} fill="white"
-        fontFamily={FONT} style={{ userSelect: 'none', fontWeight: 700 }}>
-        {ri === 2 ? 'FINISH!' : 'finish'}
-      </text>
-    </g>
-  );
-}
 
 // ── Leaf decoration (from Question1 Figma import) ─────────────────────────
 function CardLeaf() {
@@ -786,7 +672,16 @@ export default function App() {
       return;
     }
 
-    const kind = segKind(ri, seg);
+    // Gate tiles are the six "3 🍃" bridges on the Figma board. A tile can be a
+    // gate *and* a question space, so an unaffordable gate falls through to its
+    // normal behaviour — giving the player a chance to earn the leaves they need.
+    const gate = gateAt(ri, seg);
+    if (gate) {
+      if (p.leaves >= 3) { setTurnState('gate'); return; }
+      addLog(`${p.name} reached a gate — needs ${3 - p.leaves} more 🍃`);
+    }
+
+    const kind = tileKind(ri, seg);
     if (kind === 'trivia') {
       let ci = Math.floor(Math.random() * DECK.length);
       for (let t = 0; t < DECK.length; t++) {
@@ -798,9 +693,6 @@ export default function App() {
       const card = DECK[ci];
       if (card.cat === 'trivia') { setQuestion(card.data); setTurnState('card'); }
       else { setActionCard(card.data); setTurnState('action'); }
-    } else if (kind === 'gate') {
-      if (p.leaves >= 3) setTurnState('gate');
-      else { addLog(`${p.name} at gate — need ${3 - p.leaves} more 🍃`); setTurnState('moved'); }
     } else {
       setTurnState('moved');
     }
@@ -838,7 +730,7 @@ export default function App() {
   };
 
   const finishAfterCard = (p: Player, leaves: number) => {
-    if (segKind(p.ringIdx >= 0 ? p.ringIdx : 0, p.seg) === 'gate' && leaves >= 3) setTurnState('gate');
+    if (gateAt(p.ringIdx >= 0 ? p.ringIdx : 0, p.seg) && leaves >= 3) setTurnState('gate');
     else setTurnState('moved');
   };
 
@@ -952,10 +844,14 @@ export default function App() {
     }
   };
 
+  // Cross the bridge the player is standing on. Each gate lands somewhere
+  // specific — the tile the Figma arrow points at, or one of the three finishes.
   const doAdvance = () => {
     const p = players[curIdx];
-    const nextRi = p.ringIdx + 1;
-    if (nextRi >= 3) {
+    const gate = gateAt(p.ringIdx, p.seg);
+    if (!gate) { setTurnState('moved'); return; }
+
+    if (gate.to === 'finish') {
       setPlayers(prev => prev.map((pl, i) =>
         i === curIdx ? { ...pl, ringIdx: 3, leaves: 0 } : pl
       ));
@@ -963,10 +859,11 @@ export default function App() {
       addLog(`🏆 ${p.name} completed the Leaf Trail!`);
       setPhase('win');
     } else {
+      const { ring, seg } = gate.to;
       setPlayers(prev => prev.map((pl, i) =>
-        i === curIdx ? { ...pl, ringIdx: nextRi, seg: 0, leaves: 0 } : pl
+        i === curIdx ? { ...pl, ringIdx: ring, seg, leaves: 0 } : pl
       ));
-      addLog(`${p.name} advanced to Ring ${nextRi + 1}! 🌿`);
+      addLog(`${p.name} crossed the bridge to Ring ${ring + 1}! 🌿`);
       setTurnState('moved');
     }
   };
@@ -1004,6 +901,9 @@ export default function App() {
   if (phase === 'win' && winner) return <WinScreen winner={winner} onRestart={() => setPhase('setup')} />;
 
   const cur = players[curIdx];
+  // Which of the six bridges the current player is standing on, if any.
+  const curGate = cur ? gateAt(cur.ringIdx, cur.seg) : undefined;
+  const gateToFinish = curGate?.to === 'finish';
 
   const groups = new Map<string, Player[]>();
   players.forEach(p => {
@@ -1021,16 +921,15 @@ export default function App() {
     }}>
       {!manualOpen && <InfoIconButton onClick={() => setManualOpen(true)} />}
       {manualOpen && <GameManualModal onClose={() => setManualOpen(false)} />}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', width: '100%', maxWidth: BOARD_W }}>
 
         {/* ── Board SVG ─────────────────────────────────────────── */}
-        <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: '100%' }}>
           {turnState === 'placingToken' && pendingTrap && (
             <div style={{
               position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
               zIndex: 5, background: '#e05a5a', color: 'white', fontFamily: FONT, fontWeight: 700,
               fontSize: 15, padding: '10px 22px', borderRadius: 14, whiteSpace: 'nowrap',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
             }}>
               Click a tile on the board to place the {pendingTrap.tokenName}
             </div>
@@ -1040,44 +939,54 @@ export default function App() {
               position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
               zIndex: 5, background: '#0096A9', color: 'white', fontFamily: FONT, fontWeight: 700,
               fontSize: 15, padding: '10px 22px', borderRadius: 14, whiteSpace: 'nowrap',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
             }}>
               Choose a player below to take a leaf from
             </div>
           )}
         <svg
-          width={BOARD_DISPLAY_SZ} height={BOARD_DISPLAY_SZ}
-          viewBox={`0 0 ${SZ} ${SZ}`}
-          style={{ display: 'block', overflow: 'visible' }}
+          viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}
+          style={{ display: 'block', width: '100%', height: 'auto', background: PAGE_BG, borderRadius: 20 }}
         >
-          {/* Board disc */}
-          <circle cx={CX} cy={CY} r={BOARD_R} fill="#3EAA4A" />
-          <circle cx={CX} cy={CY} r={BOARD_R} fill="none" stroke="#2E8A38" strokeWidth={8} />
+          {/* ── Figma artwork ─────────────────────────────────────
+              Ring bands, the three "finish" splats and the scenery, each placed
+              at its Figma position. The bridges and their "3 🍃" badges are held
+              back and drawn after the tiles, so a gate is never hidden. */}
+          {ART.filter(a => !a.top).map((a, i) => (
+            <g key={`art-${i}`} transform={artTransform(a)}>
+              <image href={a.src} width={a.w} height={a.h} />
+            </g>
+          ))}
 
-          {/* ── Ring path tracks (subtle bands, barely lighter than the board) ── */}
-          {([0, 1, 2] as const).map(ri => (
-            <circle key={`track-${ri}`}
-              cx={CX} cy={CY}
-              r={RING_MID[ri]}
-              fill="none"
-              stroke="#45AC50"
-              opacity={0.55}
-              strokeWidth={RINGS_DEF[ri].outer - RINGS_DEF[ri].inner}
+          {/* Grass tufts and the caterpillar by the puddle */}
+          {BLADES.map((b, i) => (
+            <rect key={`blade-${i}`}
+              x={b.cx - BLADE_W / 2} y={b.cy - BLADE_H / 2}
+              width={BLADE_W} height={BLADE_H} rx={BLADE_RX}
+              fill={BLADE_COLOR} stroke={BLADE_COLOR} strokeWidth={BLADE_RX}
+              transform={b.rot ? `rotate(${b.rot} ${b.cx} ${b.cy})` : undefined}
             />
           ))}
 
-          {/* Subtle ring separator lines */}
-          {[RINGS_DEF[0].inner, RINGS_DEF[0].outer, RINGS_DEF[1].outer, RINGS_DEF[2].outer].map((r, i) => (
-            <circle key={`sep-${i}`} cx={CX} cy={CY} r={r}
-              fill="none" stroke="#2E8A38" strokeWidth={1.5} opacity={0.45} />
+          {/* "Start" in the middle, "finish" on each red splat */}
+          <text x={START_LABEL.x} y={START_LABEL.y}
+            textAnchor="middle" dominantBaseline="central"
+            fontSize={14} fill={TILE_INK}
+            fontFamily={FONT} style={{ userSelect: 'none', fontWeight: 700 }}>
+            Start
+          </text>
+          {FINISH_LABELS.map((f, i) => (
+            <text key={`finish-${i}`} x={f.x} y={f.y}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={14} fill="white"
+              fontFamily={FONT} style={{ userSelect: 'none', fontWeight: 700 }}>
+              finish
+            </text>
           ))}
 
           {/* ── Tiles ─────────────────────────────────────────── */}
-          {([0, 1, 2] as const).map(ri =>
-            Array.from({ length: RING_SEGS[ri] }, (_, seg) => {
-              const kind = segKind(ri, seg);
-              const { x, y } = segCenter(ri, seg);
-              const isTrivia = kind === 'trivia';
+          {TILES.map((ring, ri) =>
+            ring.map((t, seg) => {
+              const isTrivia = t.kind === 'trivia';
               const tileKey = `${ri}-${seg}`;
               const tok = tokens[tileKey];
               const isPlaceable = turnState === 'placingToken' && !tok;
@@ -1091,39 +1000,44 @@ export default function App() {
                 >
                   {/* Dashed invite ring while choosing where to place a trap token */}
                   {isPlaceable && (
-                    <circle cx={x} cy={y} r={TILE_R + 6} fill="none"
+                    <circle cx={t.x} cy={t.y} r={TILE_R + 6} fill="none"
                       stroke="white" strokeWidth={2.5} strokeDasharray="4 4">
                       <animateTransform attributeName="transform" type="rotate"
-                        from={`0 ${x} ${y}`} to={`360 ${x} ${y}`} dur="14s" repeatCount="indefinite" />
+                        from={`0 ${t.x} ${t.y}`} to={`360 ${t.x} ${t.y}`} dur="14s" repeatCount="indefinite" />
                     </circle>
                   )}
-                  <circle
-                    cx={x} cy={y} r={TILE_R}
-                    fill={isTrivia ? '#d0e497' : '#ffffff'}
-                    stroke="white"
-                    strokeWidth={isTrivia ? 3 : 2}
-                  />
-                  {isTrivia && (
-                    <text
-                      x={x} y={y}
-                      textAnchor="middle" dominantBaseline="central"
-                      fontSize={21} fill="#334207"
-                      fontFamily={FONT}
-                      style={{ userSelect: 'none', fontWeight: 700 }}>
-                      ?
-                    </text>
-                  )}
-                  {/* Light overlay previewing where the token will land — painted last so it's visible on top */}
+                  {/* Tile face carries Figma's own rotation, so each "?" faces along the track */}
+                  <g transform={`rotate(${t.rot} ${t.x} ${t.y})`}>
+                    <circle
+                      cx={t.x} cy={t.y} r={TILE_R - 1}
+                      fill={isTrivia ? TILE_TRIVIA_FILL : TILE_PLAIN_FILL}
+                      stroke={isTrivia ? '#ffffff' : TILE_PLAIN_FILL}
+                      strokeWidth={2}
+                    />
+                    {isTrivia && (
+                      <>
+                        <image href={TILE_ELLIPSE}
+                          x={t.x - TILE_ELLIPSE_SZ / 2} y={t.y - TILE_ELLIPSE_SZ / 2}
+                          width={TILE_ELLIPSE_SZ} height={TILE_ELLIPSE_SZ} />
+                        <text x={t.x} y={t.y}
+                          textAnchor="middle" dominantBaseline="central"
+                          fontSize={TILE_QMARK_SZ} fill={TILE_INK}
+                          fontFamily={FONT} style={{ userSelect: 'none', fontWeight: 700 }}>
+                          ?
+                        </text>
+                      </>
+                    )}
+                  </g>
+                  {/* Light overlay previewing where the token will land */}
                   {isPlaceable && hoverTile === tileKey && (
-                    <circle cx={x} cy={y} r={TILE_R} fill="white" opacity={0.45} style={{ pointerEvents: 'none' }} />
+                    <circle cx={t.x} cy={t.y} r={TILE_R} fill="white" opacity={0.45} style={{ pointerEvents: 'none' }} />
                   )}
                   {/* Trap token sitting on this space */}
                   {tok && (
                     <image
                       href={tok.img}
-                      x={x - TILE_R} y={y - TILE_R}
+                      x={t.x - TILE_R} y={t.y - TILE_R}
                       width={TILE_R * 2} height={TILE_R * 2}
-                      style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.35))' }}
                     />
                   )}
                 </g>
@@ -1131,92 +1045,11 @@ export default function App() {
             })
           )}
 
-          {/* ── Direction arrows — placed between tiles, not on them ── */}
-          <defs>
-            <marker id="darr" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto">
-              <polyline points="0,0.5 4.5,3 0,5.5"
-                fill="none" stroke="white"
-                strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </marker>
-          </defs>
-          {([0, 1, 2] as const).map(ri => {
-            const mr = RING_MID[ri];
-            const n = RING_SEGS[ri];
-            const step = (2 * Math.PI) / n;
-            // Pick between-tile angles (k + 0.5), skip gate area (k=0),
-            // take every floor(n/3) apart so we get ~3 arrows per ring
-            const every = Math.floor(n / 3);
-            return Array.from({ length: n }, (_, k) => k)
-              .filter(k => k !== 0 && (k - 1) % every === 0)
-              .map((k, ai) => {
-                const angCenter = RING_START[ri] + (k + 0.5) * step;
-                const span = 0.13; // small arc so it fits between tiles
-                const a1 = angCenter - span;
-                const a2 = angCenter + span;
-                const x1 = (CX + mr * Math.cos(a1)).toFixed(2);
-                const y1 = (CY + mr * Math.sin(a1)).toFixed(2);
-                const x2 = (CX + mr * Math.cos(a2)).toFixed(2);
-                const y2 = (CY + mr * Math.sin(a2)).toFixed(2);
-                return (
-                  <path key={`da-${ri}-${ai}`}
-                    d={`M ${x1} ${y1} A ${mr} ${mr} 0 0 1 ${x2} ${y2}`}
-                    fill="none" stroke="white" strokeWidth={4}
-                    strokeLinecap="round" markerEnd="url(#darr)"
-                  />
-                );
-              });
-          })}
-
-          {/* ── Gate stickers (drawn over tiles so badges are visible) ── */}
-          {([0, 1, 2] as const).map(ri => <GateSticker key={ri} ri={ri} />)}
-
-          {/* ── Center "Start" circle ─────────────────────────── */}
-          <circle cx={CX} cy={CY} r={CENTER_R + 8} fill="#2E8A38" />
-          <circle cx={CX} cy={CY} r={CENTER_R}     fill="#ffffff" />
-          <text x={CX} y={CY - 10}
-            textAnchor="middle" dominantBaseline="central"
-            fontSize={14} fill="#334207"
-            fontFamily={FONT} style={{ userSelect: 'none', fontWeight: 700 }}>
-            Start
-          </text>
-          {/* Two egg shapes below "Start" text */}
-          <ellipse cx={CX - 9} cy={CY + 12} rx={7} ry={9} fill="#F0F8E8" />
-          <ellipse cx={CX + 9} cy={CY + 12} rx={7} ry={9} fill="#F0F8E8" />
-
-          {/* ── Decorations outside board ─────────────────────── */}
-          {/* Pink flower — upper-left */}
-          {[0,1,2,3,4].map(i => {
-            const ba = (i / 5) * Math.PI * 2;
-            return <circle key={i} cx={CX - 305 + 18 * Math.cos(ba)} cy={CY - 188 + 18 * Math.sin(ba)} r={16} fill="#E88C95" opacity={0.9} />;
-          })}
-          <circle cx={CX - 305} cy={CY - 188} r={10} fill="#F0ADBA" />
-          {/* Pink flower — lower-right */}
-          {[0,1,2,3,4].map(i => {
-            const ba = (i / 5) * Math.PI * 2;
-            return <circle key={i} cx={CX + 305 + 16 * Math.cos(ba)} cy={CY + 200 + 16 * Math.sin(ba)} r={14} fill="#E88C95" opacity={0.88} />;
-          })}
-          <circle cx={CX + 305} cy={CY + 200} r={8} fill="#F0ADBA" />
-          {/* Pink flower — lower-left */}
-          {[0,1,2,3,4].map(i => {
-            const ba = (i / 5) * Math.PI * 2;
-            return <circle key={i} cx={CX - 295 + 14 * Math.cos(ba)} cy={CY + 208 + 14 * Math.sin(ba)} r={12} fill="#E88C95" opacity={0.85} />;
-          })}
-          <circle cx={CX - 295} cy={CY + 208} r={7} fill="#F0ADBA" />
-          {/* Small pink flower — upper-right area */}
-          {[0,1,2,3,4].map(i => {
-            const ba = (i / 5) * Math.PI * 2;
-            return <circle key={i} cx={CX + 68 + 10 * Math.cos(ba)} cy={CY - 315 + 10 * Math.sin(ba)} r={9} fill="#E88C95" opacity={0.82} />;
-          })}
-          <circle cx={CX + 68} cy={CY - 315} r={5} fill="#F0ADBA" />
-          {/* Blue puddle — left */}
-          <ellipse cx={CX - 318} cy={CY + 45} rx={28} ry={16} fill="#7EC8D8" opacity={0.75} />
-          <ellipse cx={CX - 318} cy={CY + 43} rx={22} ry={10} fill="#A8DDED" opacity={0.6} />
-          {/* Dark grass plant — right */}
-          {[-8, 0, 8].map((dx, i) => (
-            <path key={i}
-              d={`M ${CX + 318 + dx} ${CY + 8} C ${CX + 316 + dx} ${CY - 12}, ${CX + 324 + dx} ${CY - 22}, ${CX + 318 + dx} ${CY - 32}`}
-              fill="none" stroke="#2a5e28" strokeWidth={4} strokeLinecap="round"
-            />
+          {/* ── Gate layer — bridges and their "3 🍃" badges, above the tiles ── */}
+          {ART.filter(a => a.top).map((a, i) => (
+            <g key={`gate-${i}`} transform={artTransform(a)}>
+              <image href={a.src} width={a.w} height={a.h} />
+            </g>
           ))}
 
           {/* ── Player tokens ─────────────────────────────────── */}
@@ -1239,7 +1072,7 @@ export default function App() {
               }
               const tx = base.x + dx, ty = base.y + dy;
               const active = p.id === curIdx;
-              const tokenSz = 58;
+              const tokenSz = TILE_SZ + 5;
               const half = tokenSz / 2;
               return (
                 <g key={p.id}>
@@ -1253,7 +1086,6 @@ export default function App() {
                     href={p.img}
                     x={tx - half} y={ty - half}
                     width={tokenSz} height={tokenSz}
-                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}
                   />
                 </g>
               );
@@ -1261,6 +1093,11 @@ export default function App() {
           })}
         </svg>
         </div>
+        {/* ── Controls + players — sit under the landscape board ─ */}
+        <div style={{
+          display: 'flex', gap: 16, alignItems: 'flex-start',
+          flexWrap: 'wrap', justifyContent: 'center', width: '100%',
+        }}>
 
         {/* ── Sidebar ──────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 256 }}>
@@ -1351,14 +1188,14 @@ export default function App() {
 
         </div>
 
-        {/* ── Players column — beside the board and sidebar ─────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 160, flexShrink: 0 }}>
+        {/* ── Players ─────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
           {players.map((p, i) => (
             <div key={p.id} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
               background: 'white', borderRadius: 16, padding: '12px 16px',
               border: '3px solid transparent',
-              opacity: p.ringIdx >= 3 ? 0.4 : 1,
+              width: 160, opacity: p.ringIdx >= 3 ? 0.4 : 1,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
@@ -1387,6 +1224,7 @@ export default function App() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
 
@@ -1432,7 +1270,7 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 24 }}>
               <img src={cur.img} alt={cur.name} style={{ width: 44, height: 44, objectFit: 'contain' }} />
               <span style={{ fontSize: 14, color: '#6b7280', fontFamily: FONT }}>
-                {cur.name} can pass through the gate!
+                {cur.name} can {gateToFinish ? 'fly out to the finish!' : 'cross the bridge!'}
               </span>
             </div>
             <button onClick={doAdvance} style={{
@@ -1440,7 +1278,7 @@ export default function App() {
               background: '#0096A9', color: 'white',
               fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
             }}>
-              Advance to Next Ring!
+              {gateToFinish ? 'Finish the Trail!' : 'Cross the Bridge!'}
             </button>
           </div>
         </div>
