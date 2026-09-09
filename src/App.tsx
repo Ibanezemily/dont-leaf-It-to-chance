@@ -255,9 +255,15 @@ const DECK: DeckCard[] = [
 const FONT = "'Balsamiq Sans', sans-serif";
 
 // ── Leaf decoration (from Question1 Figma import) ─────────────────────────
+// The Figma source insets this 10px/11px on each side of a 168-wide card
+// (matching its own 8px corner radius) — proportionally fine there, but once
+// scaled up to our 300px-wide overlay card that becomes an ~18px gap on a
+// 14px-radius corner, reading as a big chunk of unused white margin rather
+// than a deliberate clearance. Tightened to just clear the corner (plus a
+// few px for the grain filter's own edge jitter).
 function CardLeaf() {
   return (
-    <div style={{ position: 'absolute', height: 96, left: 10, top: 10, width: 147 }}>
+    <div style={{ position: 'absolute', height: 96, left: 3, top: 10, width: 162 }}>
       <div style={{ position: 'absolute', inset: '0 -0.99% 0 0' }}>
         <svg fill="none" height="96" preserveAspectRatio="none" viewBox="0 0 148.53 96" width="148.53" style={{ display: 'block', width: '100%', height: '100%' }}>
           <g>
@@ -278,8 +284,12 @@ function CardLeaf() {
           </g>
           <defs>
             {(['cfl0','cfl1','cfl2'] as const).map(id => (
+              // The filter region matched the artwork's own bounding box exactly
+              // (0,0,149,96), but feDisplacementMap's jitter (scale=3) pushes the
+              // wobbly edge outside that box — clipping it hard at the card's
+              // left/right edges. Padding the region gives the displacement room.
               <filter key={id} id={id} colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse"
-                height="96" width="149" x="0" y="0">
+                height="116" width="169" x="-10" y="-10">
                 <feFlood floodOpacity="0" result="BackgroundImageFix" />
                 <feBlend in="SourceGraphic" in2="BackgroundImageFix" mode="normal" result="shape" />
                 <feTurbulence baseFrequency="0.102" numOctaves="3" seed="5466" type="fractalNoise" />
@@ -430,7 +440,7 @@ function TriviaCardOverlay({
 
                     if (selected !== null) {
                       if (isSelected && isCorrect)  { bg = '#c3e5ec'; border = '2px solid #0096A9'; }
-                      if (isSelected && !isCorrect) { bg = '#fde8e8'; border = '2px solid #e05a5a'; }
+                      if (isSelected && !isCorrect) { bg = '#fde8e8'; border = '2px solid transparent'; }
                       if (!isSelected && isCorrect) { bg = '#c3e5ec'; border = '2px solid #0096A9'; }
                     }
 
@@ -1064,7 +1074,7 @@ export default function App() {
       minHeight: '100vh', background: '#d8f0d8',
       fontFamily: FONT,
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', padding: '12px 8px', gap: 12,
+      alignItems: 'center', justifyContent: 'center', padding: '12px 8px', gap: 12,
     }}>
       {!manualOpen && <InfoIconButton onClick={() => setManualOpen(true)} />}
       {manualOpen && <GameManualModal onClose={() => setManualOpen(false)} />}
@@ -1104,23 +1114,27 @@ export default function App() {
               export, so these two filters give them the same hand-drawn,
               textured feel instead of looking flat and vector-perfect. */}
           <defs>
-            <filter id="tileGrain" x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
-              {/* A fine 5-bucket-wide alternating table (the first attempt) produced
-                  dust too small to survive at a 51px tile's on-screen size — it read
-                  as a fringe around the rim (where anti-aliasing gives it something
-                  to blend with) rather than texture across the fill. Figma's own
-                  ring-band grain uses one wide contiguous threshold band instead, so
-                  the noise resolves into a handful of visible flecks; matched here. */}
+            <filter id="tileGrain" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+              {/* Pulled from the Figma node the user hand-tuned (254:2762): its exported
+                  SVG has no filter at all — the "stroke" is really the tile's own
+                  silhouette redrawn as a jittered path in the same fill color, giving a
+                  hand-drawn, uneven edge instead of a perfect circle. feDisplacementMap
+                  does the same thing live here; the speckle stage (a wide contiguous
+                  threshold band, matched to the Figma ring-band grain so it resolves
+                  into a handful of visible flecks rather than dust) rides on top,
+                  clipped to the now-wobbly silhouette so it never spills past the edge. */}
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="15" result="edgeWobble" />
+              <feDisplacementMap in="SourceGraphic" in2="edgeWobble" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="wobbled" />
               <feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="3" seed="8" result="noise" />
               <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
               <feComponentTransfer in="alphaNoise" result="speckle">
                 <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" />
               </feComponentTransfer>
-              <feComposite in="speckle" in2="SourceGraphic" operator="in" result="speckleClipped" />
+              <feComposite in="speckle" in2="wobbled" operator="in" result="speckleClipped" />
               <feFlood floodColor="#c9e2a8" result="speckColor" />
               <feComposite in="speckColor" in2="speckleClipped" operator="in" result="speck" />
               <feMerge>
-                <feMergeNode in="SourceGraphic" />
+                <feMergeNode in="wobbled" />
                 <feMergeNode in="speck" />
               </feMerge>
             </filter>
@@ -1353,8 +1367,16 @@ export default function App() {
           {(() => {
             const hasCard = (turnState === 'card' && !!question) || (turnState === 'action' && !!actionCard);
             return (
-              <div style={{ background: 'white', borderRadius: 20, padding: 16, border: hasCard ? '2px solid #0096A9' : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                <div style={{ fontSize: 10, color: hasCard ? '#0096A9' : '#9ca3af', letterSpacing: 2, fontFamily: FONT, fontWeight: 700 }}>
+              <div style={{
+                background: hasCard ? '#F1FDE8' : '#d8f0d8', borderRadius: 20, padding: 16, border: 'none',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                transition: 'background 0.3s ease',
+              }}>
+                <div style={{
+                  fontSize: hasCard ? 13 : 10, color: hasCard ? '#0096A9' : '#9ca3af', letterSpacing: 2,
+                  fontFamily: FONT, fontWeight: 700,
+                  transition: 'font-size 0.3s ease, color 0.3s ease',
+                }}>
                   {hasCard ? 'Draw a Card' : 'Card Deck'}
                 </div>
                 <CardDeckPreview onClick={() => {
@@ -1493,7 +1515,7 @@ function SetupScreen({ onSelectCount }: { onSelectCount: (n: number) => void }) 
   const [manualOpen, setManualOpen] = useState(false);
   return (
     <div style={{
-      minHeight: '100vh', background: '#ffffff',
+      minHeight: '100vh', background: '#d8f0d8',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       gap: 36, fontFamily: FONT,
@@ -1593,14 +1615,14 @@ function PlayerSetupScreen({
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#ffffff',
+      minHeight: '100vh', background: '#d8f0d8',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       gap: 28, fontFamily: FONT, padding: '24px 16px',
     }}>
       <div style={{ textAlign: 'center' }}>
         <h2 style={{ color: '#374151', fontSize: 36, margin: 0, fontWeight: 700 }}>
-          Choose Your Bug
+          Choose Your Caterpillar
         </h2>
       </div>
 
