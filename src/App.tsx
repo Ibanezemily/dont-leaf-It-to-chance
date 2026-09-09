@@ -509,12 +509,11 @@ function TriviaCardOverlay({
 
                     let bg     = isHov ? '#e8f7f9' : 'transparent';
                     let border = isHov ? '2px solid #0096A9' : '2px solid transparent';
-                    let tx     = isHov ? 'translateX(5px)' : 'translateX(0)';
 
                     if (selected !== null) {
-                      if (isSelected && isCorrect)  { bg = '#c3e5ec'; border = '2px solid #0096A9'; tx = 'translateX(0)'; }
-                      if (isSelected && !isCorrect) { bg = '#fde8e8'; border = '2px solid #e05a5a'; tx = 'translateX(0)'; }
-                      if (!isSelected && isCorrect) { bg = '#c3e5ec'; border = '2px solid #0096A9'; tx = 'translateX(0)'; }
+                      if (isSelected && isCorrect)  { bg = '#c3e5ec'; border = '2px solid #0096A9'; }
+                      if (isSelected && !isCorrect) { bg = '#fde8e8'; border = '2px solid #e05a5a'; }
+                      if (!isSelected && isCorrect) { bg = '#c3e5ec'; border = '2px solid #0096A9'; }
                     }
 
                     return (
@@ -529,8 +528,7 @@ function TriviaCardOverlay({
                           padding: '7px 12px', textAlign: 'left',
                           cursor: selected !== null ? 'default' : 'pointer',
                           fontFamily: BOLD, fontWeight: 700, fontSize: 14, color: '#444240',
-                          lineHeight: 1.4, transition: 'all 0.15s ease',
-                          transform: tx,
+                          lineHeight: 1.4, transition: 'background 0.15s ease, border-color 0.15s ease',
                         }}
                       >
                         {question.type === 'tf' ? opt : <>{OPT_LABELS[i]}) {opt}</>}
@@ -729,6 +727,7 @@ export default function App() {
   const [actionCardOpen, setActionCardOpen] = useState(false);
   const [tokens, setTokens] = useState<Record<string, { name: string; img: string; effect: 'skip' | 'loseLeaf' }>>({});
   const [pendingTrap, setPendingTrap] = useState<ActionCard | null>(null);
+  const [hoverTile, setHoverTile] = useState<string | null>(null);
   const [logs, setLogs]           = useState<string[]>([]);
   const [winner, setWinner]       = useState<Player | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
@@ -928,6 +927,7 @@ export default function App() {
     }));
     addLog(`${players[curIdx].name} placed the ${pendingTrap.tokenName} on Ring ${ri + 1}, tile ${seg + 1}.`);
     setPendingTrap(null);
+    setHoverTile(null);
     setTurnState('moved');
   };
 
@@ -1024,10 +1024,31 @@ export default function App() {
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center' }}>
 
         {/* ── Board SVG ─────────────────────────────────────────── */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          {turnState === 'placingToken' && pendingTrap && (
+            <div style={{
+              position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
+              zIndex: 5, background: '#e05a5a', color: 'white', fontFamily: FONT, fontWeight: 700,
+              fontSize: 15, padding: '10px 22px', borderRadius: 14, whiteSpace: 'nowrap',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+            }}>
+              Click a tile on the board to place the {pendingTrap.tokenName}
+            </div>
+          )}
+          {turnState === 'chooseTarget' && (
+            <div style={{
+              position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
+              zIndex: 5, background: '#0096A9', color: 'white', fontFamily: FONT, fontWeight: 700,
+              fontSize: 15, padding: '10px 22px', borderRadius: 14, whiteSpace: 'nowrap',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+            }}>
+              Choose a player below to take a leaf from
+            </div>
+          )}
         <svg
           width={BOARD_DISPLAY_SZ} height={BOARD_DISPLAY_SZ}
           viewBox={`0 0 ${SZ} ${SZ}`}
-          style={{ display: 'block', overflow: 'visible', flexShrink: 0 }}
+          style={{ display: 'block', overflow: 'visible' }}
         >
           {/* Board disc */}
           <circle cx={CX} cy={CY} r={BOARD_R} fill="#3EAA4A" />
@@ -1057,8 +1078,6 @@ export default function App() {
               const kind = segKind(ri, seg);
               const { x, y } = segCenter(ri, seg);
               const isTrivia = kind === 'trivia';
-              const isLandedTile =
-                turnState !== 'idle' && ri === cur.ringIdx && seg === cur.seg;
               const tileKey = `${ri}-${seg}`;
               const tok = tokens[tileKey];
               const isPlaceable = turnState === 'placingToken' && !tok;
@@ -1066,25 +1085,16 @@ export default function App() {
               return (
                 <g key={tileKey}
                   onClick={isPlaceable ? () => placeToken(ri, seg) : undefined}
+                  onMouseEnter={isPlaceable ? () => setHoverTile(tileKey) : undefined}
+                  onMouseLeave={isPlaceable ? () => setHoverTile(prev => prev === tileKey ? null : prev) : undefined}
                   style={{ cursor: isPlaceable ? 'pointer' : 'default' }}
                 >
-                  {/* Pulse ring when player is on this tile */}
-                  {isLandedTile && (
-                    <circle cx={x} cy={y} r={TILE_R + 8} fill="none"
-                      stroke="white" strokeWidth={3.5}>
-                      <animate attributeName="r"
-                        values={`${TILE_R + 5};${TILE_R + 16};${TILE_R + 5}`}
-                        dur="1.2s" repeatCount="indefinite" />
-                      <animate attributeName="opacity"
-                        values="0.9;0;0.9" dur="1.2s" repeatCount="indefinite" />
-                    </circle>
-                  )}
                   {/* Dashed invite ring while choosing where to place a trap token */}
                   {isPlaceable && (
                     <circle cx={x} cy={y} r={TILE_R + 6} fill="none"
-                      stroke="#e05a5a" strokeWidth={2.5} strokeDasharray="4 4">
+                      stroke="white" strokeWidth={2.5} strokeDasharray="4 4">
                       <animateTransform attributeName="transform" type="rotate"
-                        from={`0 ${x} ${y}`} to={`360 ${x} ${y}`} dur="6s" repeatCount="indefinite" />
+                        from={`0 ${x} ${y}`} to={`360 ${x} ${y}`} dur="14s" repeatCount="indefinite" />
                     </circle>
                   )}
                   <circle
@@ -1102,6 +1112,10 @@ export default function App() {
                       style={{ userSelect: 'none', fontWeight: 700 }}>
                       ?
                     </text>
+                  )}
+                  {/* Light overlay previewing where the token will land — painted last so it's visible on top */}
+                  {isPlaceable && hoverTile === tileKey && (
+                    <circle cx={x} cy={y} r={TILE_R} fill="white" opacity={0.45} style={{ pointerEvents: 'none' }} />
                   )}
                   {/* Trap token sitting on this space */}
                   {tok && (
@@ -1246,6 +1260,7 @@ export default function App() {
             });
           })}
         </svg>
+        </div>
 
         {/* ── Sidebar ──────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 256 }}>
@@ -1370,11 +1385,6 @@ export default function App() {
                   <LeafIcon key={l} size={12} style={{ filter: l < p.leaves ? 'none' : 'grayscale(1) opacity(0.22)' }} />
                 ))}
               </div>
-              {i === curIdx && (
-                <div style={{ fontSize: 11, fontWeight: 700, color: p.color, fontFamily: FONT }}>
-                  Current Turn
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -1503,10 +1513,10 @@ function SetupScreen({ onSelectCount }: { onSelectCount: (n: number) => void }) 
               onMouseLeave={e => Object.assign(e.currentTarget.style, {
                 borderColor: '#d1d5db', transform: 'scale(1)',
               })}>
-              <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', justifyContent: 'center', width: 112 }}>
+              <div style={{ display: 'flex', gap: 0, flexWrap: 'nowrap', justifyContent: 'center', width: '100%' }}>
                 {CHARS.slice(0, n).map(c => (
                   <img key={c.name} src={c.img} alt={c.name}
-                    style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                    style={{ width: 38, height: 38, objectFit: 'contain', flexShrink: 0 }} />
                 ))}
               </div>
               <span style={{ fontSize: 18, fontWeight: 700 }}>{n} Players</span>
@@ -1553,9 +1563,6 @@ function PlayerSetupScreen({
         <h2 style={{ color: '#374151', fontSize: 36, margin: 0, fontWeight: 700 }}>
           Choose Your Bug
         </h2>
-        <p style={{ color: '#6b7280', margin: '6px 0 0', fontSize: 14, fontFamily: FONT }}>
-          Enter your name and pick a character
-        </p>
       </div>
 
       <div style={{
