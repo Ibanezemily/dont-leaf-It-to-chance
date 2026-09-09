@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type CSSProperties } from 'react';
 import Back from '@/imports/Back';
 import q1Paths from '@/imports/Question1/svg-sqkd0ilo4z';
 import pinkCat      from '@/imports/image.png';
@@ -6,9 +6,33 @@ import purpleCat    from '@/imports/image-1.png';
 import blueCat      from '@/imports/image-2.png';
 import orangeCat    from '@/imports/image-3.png';
 import g77Paths from '@/imports/Group77/svg-d7ctobszwm';
+import leafLogo from '@/imports/LeafLogo/leaf.svg';
+import leafIcon from '@/imports/LeafIcon/leaf-icon.svg';
+import cloudToken from '@/imports/Tokens/cloud.svg';
+import waspToken  from '@/imports/Tokens/wasp.svg';
+import birdToken  from '@/imports/Tokens/bird.svg';
+import slugToken  from '@/imports/Tokens/slug.svg';
+import actionStickyBusiness from '@/imports/ActionCards/sticky-business.png';
+import actionBirdSighting   from '@/imports/ActionCards/bird-sighting.png';
+import actionCamouflage     from '@/imports/ActionCards/camouflage.png';
+import actionSweetSpot      from '@/imports/ActionCards/sweet-spot.png';
+import actionRainyWeather   from '@/imports/ActionCards/rainy-weather.png';
+import actionPuddleBreak    from '@/imports/ActionCards/puddle-break.png';
+import actionAntRaid        from '@/imports/ActionCards/ant-raid.png';
+import actionSunnyRock      from '@/imports/ActionCards/sunny-rock.png';
+import actionWaspWatch      from '@/imports/ActionCards/wasp-watch.png';
+import actionMolt           from '@/imports/ActionCards/molt.png';
+import actionWebTrap        from '@/imports/ActionCards/web-trap.png';
+import actionTailwind       from '@/imports/ActionCards/tailwind.png';
+import manualFull from '@/imports/Manual/manual-full.png';
+import redButterfly    from '@/imports/Butterflies/red.png';
+import purpleButterfly from '@/imports/Butterflies/purple.png';
+import blueButterfly   from '@/imports/Butterflies/blue.png';
+import orangeButterfly from '@/imports/Butterflies/orange.png';
 
 // ── Board geometry ─────────────────────────────────────────────────────────
 const SZ = 640;
+const BOARD_DISPLAY_SZ = 800; // on-screen render size — SVG scales the SZ-based geometry up to fit
 const CX = SZ / 2, CY = SZ / 2; // 320, 320
 const BOARD_R = 300;
 const CENTER_R = 48; // "Start" circle radius
@@ -67,40 +91,61 @@ function tileXY(ri: number, seg: number) {
   return { x, y };
 }
 
-// ── Trivia questions ───────────────────────────────────────────────────────
-const QUESTIONS = [
-  { q: "How many legs does a spider have?",        opts: ["4","6","8","10"],                            ans: 2 },
-  { q: "What do bees make?",                        opts: ["Honey","Milk","Jam","Wax"],                 ans: 0 },
-  { q: "What do caterpillars turn into?",           opts: ["Butterflies","Beetles","Ants","Fireflies"],  ans: 0 },
-  { q: "How many wings does a butterfly have?",     opts: ["2","4","6","8"],                             ans: 1 },
-  { q: "What is the tallest land animal?",          opts: ["Giraffe","Elephant","Camel","Horse"],        ans: 0 },
-  { q: "How many colors are in a rainbow?",         opts: ["5","6","7","8"],                             ans: 2 },
-  { q: "What do plants need to grow?",              opts: ["Sun, water & soil","Only water","Only sun","Only wind"], ans: 0 },
-  { q: "A baby frog is called a?",                  opts: ["Tadpole","Pup","Cub","Fawn"],                ans: 0 },
-  { q: "How many legs does an ant have?",           opts: ["4","6","8","12"],                            ans: 1 },
-  { q: "Which bird cannot fly?",                    opts: ["Penguin","Eagle","Sparrow","Robin"],         ans: 0 },
-  { q: "Where do bees live?",                       opts: ["In a hive","In a burrow","In a dam","In a den"], ans: 0 },
-  { q: "A group of fish is called a?",              opts: ["School","Pack","Flock","Herd"],              ans: 0 },
-  { q: "Which season do trees lose leaves?",        opts: ["Autumn","Spring","Summer","Winter"],         ans: 0 },
-  { q: "What gas do plants use for food?",          opts: ["Carbon dioxide","Oxygen","Nitrogen","Steam"], ans: 0 },
-  { q: "Which insect makes silk?",                  opts: ["Silkworm","Ant","Beetle","Cricket"],         ans: 0 },
-  { q: "A group of birds is called a?",             opts: ["Flock","Pack","School","Pod"],               ans: 0 },
-  { q: "What covers most of Earth?",                opts: ["Water","Forest","Desert","Ice"],             ans: 0 },
-  { q: "Which planet is closest to the Sun?",       opts: ["Mercury","Venus","Earth","Mars"],            ans: 0 },
-  { q: "How do ants find their way home?",          opts: ["Scent trails","Sound","Light","Maps"],       ans: 0 },
-  { q: "What do roots absorb from the soil?",       opts: ["Water & nutrients","Sunlight","CO₂","Air"], ans: 0 },
+// ── Trivia questions — the 25 official cards from Figma ────────────────────
+const QUESTIONS: Array<{
+  type: 'mc' | 'tf';
+  q: string;
+  opts: string[];
+  ans: number;
+  explain?: string;
+}> = [
+  { type: 'mc', q: "A butterfly's transformation from egg to adult has a special name, what is it?", opts: ["Migration", "Metamorphosis", "Hibernation", "Camouflage"], ans: 1 },
+  { type: 'mc', q: "What is the first stage of the butterfly's life-cycle?", opts: ["Caterpillar", "Egg", "Chrysalis", "Butterfly"], ans: 1 },
+  { type: 'mc', q: "Butterflies can be picky about where they lay their eggs, what is their go to spot?", opts: ["Under rocks", "In tree bark", "In water", "On leaves or stems"], ans: 3 },
+  { type: 'tf', q: "All Butterfly eggs look the same.", opts: ["True", "False"], ans: 1, explain: "eggs can be round, oval or cylindrical depending on the species." },
+  { type: 'tf', q: "Butterfly eggs always hatch after exactly one day.", opts: ["True", "False"], ans: 1, explain: "hatching time varies by species, it can take anywhere from a week to several weeks." },
+  { type: 'tf', q: "Butterflies lay many eggs because only a small amount of them will survive.", opts: ["True", "False"], ans: 0, explain: "Butterflies lay many eggs to increase the chances of the next generation living on." },
+  { type: 'mc', q: "What is the second stage of a butterfly's life cycle?", opts: ["Caterpillar", "Egg", "Chrysalis", "Butterfly"], ans: 0 },
+  { type: 'tf', q: "The Milkweed plant that monarch caterpillars eat only serves as food.", opts: ["True", "False"], ans: 1, explain: "the toxic compounds the plant has are stored and serve as defense by making them taste bad to predators." },
+  { type: 'mc', q: "How does a caterpillar get out of its egg shell?", opts: ["Rain breaks it", "It eats through it", "Ants break it", "It falls open"], ans: 1 },
+  { type: 'tf', q: "Spiders and ants are predators to the monarch caterpillar.", opts: ["True", "False"], ans: 0, explain: "ants and spiders are a common predator of the monarch caterpillar." },
+  { type: 'mc', q: "How much larger can a caterpillar get from when it first hatches?", opts: ["10 times", "100 times", "50 times", "1000 times"], ans: 1 },
+  { type: 'tf', q: "A caterpillar sheds its skin 4 to 5 times before it's done growing.", opts: ["True", "False"], ans: 0, explain: "the caterpillar sheds its skin about 4 to 5 times as it keeps growing bigger and bigger." },
+  { type: 'mc', q: "What is the main job of the caterpillar during it's stage?", opts: ["Build a nest", "Finding a mate", "Eating and growing", "Migrating"], ans: 2 },
+  { type: 'tf', q: "There are two different names for the third stage of the butterfly cycle.", opts: ["True", "False"], ans: 0, explain: "the third stage is both known as the Chrysalis and the Pupa stage." },
+  { type: 'tf', q: "Some species can stay inside their chrysalis stage for weeks to even months.", opts: ["True", "False"], ans: 0, explain: "some butterflies can stay inside for weeks to months to wait until the conditions are favourable." },
+  { type: 'mc', q: "What happens inside the chrysalis?", opts: ["It sleeps", "Its body transforms", "It stores food", "It practices flying"], ans: 1 },
+  { type: 'tf', q: "A chrysalis can only be found under a branch.", opts: ["True", "False"], ans: 1, explain: "they can also be found hidden in leaves or even buried underground!" },
+  { type: 'tf', q: "The last and final stage of the life cycle is known as the Pupa.", opts: ["True", "False"], ans: 1, explain: "the last stage of the life cycle is known as the Butterfly!" },
+  { type: 'mc', q: "Once the caterpillar becomes a butterfly its main job is what?", opts: ["Building a chrysalis", "Eating leaves", "Laying eggs", "Shedding skin"], ans: 2 },
+  { type: 'mc', q: "Every year monarch butterflies make a large trip across countries, what is this called?", opts: ["Hibernation", "Metamorphosis", "Camouflage", "Migration"], ans: 3 },
+  { type: 'mc', q: "While drinking nectar, how can a butterfly help a flower?", opts: ["Help it grow taller", "Change its color", "Pollinate the flower", "Keep rain off it"], ans: 2 },
+  { type: 'mc', q: "Plants need pollinators like butterflies, what share of the world's food producing plants need pollinators?", opts: ["Almost 80%", "About 25%", "About 10%", "About 50%"], ans: 0 },
+  { type: 'tf', q: "A butterfly can taste with its feet.", opts: ["True", "False"], ans: 0, explain: "a butterfly has taste receptors on its feet! It helps the butterfly identify which plant it lands on." },
+  { type: 'tf', q: "It takes one generation of monarch butterflies to complete full migration.", opts: ["True", "False"], ans: 1, explain: "it actually takes multiple generations to complete the full migration trip." },
+  { type: 'mc', q: "Why do butterflies sometimes gather at mud puddles?", opts: ["To cool off", "To hide from threats", "To get salts & minerals", "To lay eggs"], ans: 2 },
 ];
 
 // ── Characters ─────────────────────────────────────────────────────────────
 const CHARS = [
-  { img: pinkCat,   name: 'Rosie',  color: '#e05a5a' },
-  { img: purpleCat, name: 'Violet', color: '#9b4dca' },
-  { img: blueCat,   name: 'Azure',  color: '#4b7bbf' },
-  { img: orangeCat, name: 'Sunny',  color: '#e87c2a' },
+  { img: pinkCat,   name: 'Rosie',  color: '#e05a5a', butterfly: redButterfly },
+  { img: purpleCat, name: 'Violet', color: '#9b4dca', butterfly: purpleButterfly },
+  { img: blueCat,   name: 'Azure',  color: '#4b7bbf', butterfly: blueButterfly },
+  { img: orangeCat, name: 'Sunny',  color: '#e87c2a', butterfly: orangeButterfly },
 ];
 
+// ── Leaf icon (Figma leaf glyph, used in place of the 🍃 emoji) ────────────
+function LeafIcon({ size = 20, style }: { size?: number; style?: CSSProperties }) {
+  return (
+    <img
+      src={leafIcon} alt=""
+      style={{ width: size, height: size * (53.5513 / 30.6442), objectFit: 'contain', display: 'inline-block', ...style }}
+    />
+  );
+}
+
 // ── Die ────────────────────────────────────────────────────────────────────
-const DOT_PCT = [14, 45, 76];
+const DOT_PCT = [18, 50, 82];
 const DOT_MAP: Record<number, [number, number][]> = {
   1: [[1,1]],
   2: [[0,0],[2,2]],
@@ -114,7 +159,7 @@ function Die({ val, rolling }: { val: number; rolling: boolean }) {
   return (
     <div style={{
       width: 72, height: 72, background: 'white',
-      borderRadius: 18, border: '3px solid #CAECC3',
+      borderRadius: 12, border: '2px solid #d1d5db',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       animation: rolling ? 'tumble 0.12s linear infinite' : 'none',
     }}>
@@ -122,7 +167,7 @@ function Die({ val, rolling }: { val: number; rolling: boolean }) {
         {(DOT_MAP[val] ?? []).map(([r, c], i) => (
           <div key={i} style={{
             position: 'absolute', width: 11, height: 11,
-            background: '#0096A9', borderRadius: '50%',
+            background: '#2d2d2d', borderRadius: '50%',
             top: `${DOT_PCT[r]}%`, left: `${DOT_PCT[c]}%`,
             transform: 'translate(-50%,-50%)',
           }} />
@@ -136,15 +181,83 @@ function Die({ val, rolling }: { val: number; rolling: boolean }) {
 interface Player {
   id: number;
   img: string;
+  butterflyImg: string;
   name: string;
   color: string;
   ringIdx: number;
   seg: number;
   leaves: number;
+  shield?: boolean;   // Camouflage — blocks the next negative effect against this player
+  skipNext?: boolean; // Sticky Business — this player skips their next turn
 }
 type Phase = 'setup' | 'playersetup' | 'play' | 'win';
-// 'card' = landed on trivia tile; card back shown until player taps to flip
-type TurnState = 'idle' | 'card' | 'gate' | 'moved';
+// 'card'         = landed on a trivia tile; card back shown until player taps to flip
+// 'action'       = an action card was drawn; showing its card back/front
+// 'placingToken' = an action card requires placing a trap token on the board
+// 'chooseTarget' = an action card requires picking another player (e.g. steal a leaf)
+type TurnState = 'idle' | 'card' | 'action' | 'placingToken' | 'chooseTarget' | 'gate' | 'moved';
+
+// ── Action cards — the 12 official cards from Figma, shuffled into the same
+// deck as the trivia cards. Trap cards let a player leave a token on any
+// board space; the next player to land there triggers its effect.
+type ActionKind = 'trap' | 'keepLeaf' | 'shield' | 'instantLoseLeaf' | 'instantSteal' | 'instantAdvance';
+interface ActionCard {
+  title: string;
+  body: string;
+  kind: ActionKind;
+  img: string;
+  tokenName?: string;
+  tokenImg?: string;
+  trapEffect?: 'skip' | 'loseLeaf';
+  amount?: number;
+}
+const ACTIONS: ActionCard[] = [
+  { title: 'Sticky Business!', kind: 'trap', tokenName: 'Slug', tokenImg: slugToken, trapEffect: 'skip',
+    img: actionStickyBusiness,
+    body: "Place the Slug on any space on the board. The next player to land on that space will get stuck and have to skip their next turn. Remove the slug after it's been landed on." },
+  { title: 'Bird Sighting!', kind: 'trap', tokenName: 'Bird', tokenImg: birdToken, trapEffect: 'loseLeaf',
+    img: actionBirdSighting,
+    body: "Place the Bird on any space on the board. The next player to land on that space will lose a leaf. Remove the Bird after it's been landed on." },
+  { title: 'Camouflage!', kind: 'shield',
+    img: actionCamouflage,
+    body: "Your coloring blends perfectly into the leaves. Keep this card. You are protected the next time you encounter a predator. Discard after use." },
+  { title: 'Sweet Spot!', kind: 'keepLeaf',
+    img: actionSweetSpot,
+    body: "You found rich nectar in the milkweed flowers! Keep this card as a Leaf Card." },
+  { title: 'Rainy Weather', kind: 'trap', tokenName: 'Cloud', tokenImg: cloudToken, trapEffect: 'loseLeaf',
+    img: actionRainyWeather,
+    body: "Place a stormy cloud on any space. Any player who lands there loses a leaf. Remove the cloud after it's been landed on." },
+  { title: 'Puddle Break!', kind: 'instantSteal',
+    img: actionPuddleBreak,
+    body: "You stopped at a puddle to drink water. Take one leaf from any player!" },
+  { title: 'Ant Raid', kind: 'instantLoseLeaf',
+    img: actionAntRaid,
+    body: "A hungry ant colony found your egg. Discard 1 leaf." },
+  { title: 'Sunny Rock!', kind: 'keepLeaf',
+    img: actionSunnyRock,
+    body: "You found a warm rock to bask on and warm your wings. Keep this card as a Leaf Card!" },
+  { title: 'Wasp Watch', kind: 'trap', tokenName: 'Wasp', tokenImg: waspToken, trapEffect: 'loseLeaf',
+    img: actionWaspWatch,
+    body: "Place a Wasp predator token on any space. Any player who lands there loses 1 leaf. Remove the Wasp after it's been landed on." },
+  { title: 'Molt!', kind: 'keepLeaf',
+    img: actionMolt,
+    body: "You shed your skin and grew stronger. Keep this card as a Leaf Card!" },
+  { title: 'Web Trap', kind: 'instantLoseLeaf',
+    img: actionWebTrap,
+    body: "You flew into a spider's web, discard 1 leaf." },
+  { title: 'Tailwind', kind: 'instantAdvance', amount: 2,
+    img: actionTailwind,
+    body: "Strong winds helped push your migration, move ahead two spaces." },
+];
+
+// The shared draw deck — trivia and action cards shuffled together.
+type DeckCard =
+  | { cat: 'trivia'; data: typeof QUESTIONS[number] }
+  | { cat: 'action'; data: ActionCard };
+const DECK: DeckCard[] = [
+  ...QUESTIONS.map(q => ({ cat: 'trivia' as const, data: q })),
+  ...ACTIONS.map(a => ({ cat: 'action' as const, data: a })),
+];
 
 const FONT = "'Balsamiq Sans', sans-serif";
 
@@ -167,14 +280,17 @@ function GateSticker({ ri }: { ri: number }) {
 
   return (
     <g>
-      {/* Thick green tab from ring edge to badge */}
+      {/* White connector from ring edge out to the badge */}
       <line
         x1={CX + (outerR + 2) * Math.cos(ga)}
         y1={CY + (outerR + 2) * Math.sin(ga)}
         x2={CX + (badgeR + finSz - 4) * Math.cos(ga)}
         y2={CY + (badgeR + finSz - 4) * Math.sin(ga)}
-        stroke="#3DA84E" strokeWidth={22} strokeLinecap="round"
+        stroke="white" strokeWidth={14} strokeLinecap="round"
       />
+
+      {/* White badge circle behind the gate icon */}
+      <circle cx={bx} cy={by} r={22} fill="white" />
 
       {/* Gate badge — Group77 icon inlined (viewBox 0 0 13.635 11.5223, scaled 3.2×) */}
       <g transform={`translate(${(bx - 13.635 * 1.6).toFixed(2)}, ${(by - 11.5223 * 1.6).toFixed(2)}) scale(3.2)`}>
@@ -182,6 +298,16 @@ function GateSticker({ ri }: { ri: number }) {
         <path d={g77Paths.p12b79700} fill="#6D8A1C" />
         <path d={g77Paths.p3ed3f900} fill="#4B4B4B" />
       </g>
+
+      {/* White arrow from badge to the finish blob */}
+      <line
+        x1={CX + (badgeR + 24) * Math.cos(ga)}
+        y1={CY + (badgeR + 24) * Math.sin(ga)}
+        x2={CX + (finR - finSz * 0.85) * Math.cos(ga)}
+        y2={CY + (finR - finSz * 0.85) * Math.sin(ga)}
+        stroke="white" strokeWidth={5} strokeLinecap="round"
+        markerEnd="url(#darr)"
+      />
 
       {/* Pink "finish" flower blob */}
       {([0,1,2,3,4] as const).map(i => {
@@ -277,17 +403,6 @@ function CardDeckPreview({ onClick }: { onClick: () => void }) {
           <div style={{ width: 168, height: 305, transform: `scale(${W / 168})`, transformOrigin: 'top left' }}>
             <Back />
           </div>
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            paddingBottom: 14,
-            background: `linear-gradient(to top, rgba(0,0,0,${hov ? 0.35 : 0.22}) 0%, transparent 55%)`,
-            transition: 'background 0.18s',
-          }}>
-            <span style={{ color: 'white', fontSize: 11, fontWeight: 700, fontFamily: FONT, letterSpacing: 1.5 }}>
-              TAP TO DRAW
-            </span>
-          </div>
         </div>
       </div>
     </div>
@@ -312,13 +427,12 @@ function TriviaCardOverlay({
     return () => clearTimeout(t);
   }, []);
 
-  const W = 300, H = Math.round(305 * W / 168);
+  const W = 300, H = 610;
   const BACK_SCALE = W / 168;
 
   const handleAnswer = (i: number) => {
     if (selected !== null) return;
     setSelected(i);
-    setTimeout(() => onAnswer(i), 1500);
   };
 
   return (
@@ -326,8 +440,8 @@ function TriviaCardOverlay({
       style={{
         position: 'fixed', inset: 0, zIndex: 60,
         background: 'rgba(10,50,15,0.62)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backdropFilter: 'blur(2px)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18,
+        backdropFilter: 'blur(2px)', overflowY: 'auto', padding: '24px 0',
       }}
     >
       {/* perspective wrapper keeps the 3-D effect centred */}
@@ -379,7 +493,7 @@ function TriviaCardOverlay({
                 overflowY: 'auto',
               }}>
                 <p style={{ margin: 0, fontFamily: BOLD, fontWeight: 700, fontSize: 17, color: '#444240' }}>
-                  Multiple Choice
+                  {question.type === 'tf' ? 'True or False?' : 'Multiple Choice'}
                 </p>
 
                 <p style={{ margin: 0, fontFamily: REG, fontWeight: 400, fontSize: 14, color: '#444240', lineHeight: 1.55 }}>
@@ -419,7 +533,7 @@ function TriviaCardOverlay({
                           transform: tx,
                         }}
                       >
-                        {OPT_LABELS[i]}) {opt}
+                        {question.type === 'tf' ? opt : <>{OPT_LABELS[i]}) {opt}</>}
                       </button>
                     );
                   })}
@@ -433,9 +547,11 @@ function TriviaCardOverlay({
                     </p>
                     <div style={{
                       background: '#c3e5ec', borderRadius: 7, padding: '5px 12px',
-                      fontFamily: BOLD, fontWeight: 700, fontSize: 13, color: '#444240',
+                      fontFamily: BOLD, fontWeight: 700, fontSize: 13, color: '#444240', lineHeight: 1.4,
                     }}>
-                      {OPT_LABELS[question.ans].toUpperCase()}) {question.opts[question.ans]}
+                      {question.type === 'tf'
+                        ? <>{question.opts[question.ans].toUpperCase()}{question.explain && <> - <span style={{ fontFamily: REG, fontWeight: 400 }}>{question.explain}</span></>}</>
+                        : <>{OPT_LABELS[question.ans].toUpperCase()}) {question.opts[question.ans]}</>}
                     </div>
                   </div>
                 )}
@@ -443,6 +559,156 @@ function TriviaCardOverlay({
             </div>
           </div>
         </div>
+      </div>
+
+      {selected !== null && (
+        <button
+          onClick={() => onAnswer(selected)}
+          style={{
+            padding: '12px 40px', borderRadius: 12, border: 'none',
+            background: '#0096A9', color: 'white',
+            fontFamily: BOLD, fontWeight: 700, fontSize: 16, cursor: 'pointer',
+          }}
+        >
+          Next →
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Action card overlay — same flip-card chrome as trivia, simpler body ───
+function ActionCardOverlay({
+  card,
+  onContinue,
+}: {
+  card: ActionCard;
+  onContinue: () => void;
+}) {
+  const [flipped, setFlipped] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setFlipped(true), 420);
+    return () => clearTimeout(t);
+  }, []);
+
+  const W = 300, H = Math.round(305 * W / 168);
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 60,
+        background: 'rgba(10,50,15,0.62)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18,
+        backdropFilter: 'blur(2px)',
+      }}
+    >
+      <div style={{ perspective: 1100 }}>
+        <div style={{ position: 'relative', width: W + 14, height: H + 14 }}>
+          <div style={{ position: 'absolute', top: 12, left: 12, width: W, height: H, borderRadius: 14, background: '#2e4018' }} />
+          <div style={{ position: 'absolute', top: 6,  left: 6,  width: W, height: H, borderRadius: 14, background: '#4a6424' }} />
+
+          <div style={{
+            position: 'absolute', top: 0, left: 0, width: W, height: H,
+            transformStyle: 'preserve-3d',
+            transition: 'transform 0.65s cubic-bezier(0.4,0,0.2,1)',
+            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}>
+
+            {/* ── Front: card back ─────────────────────────────── */}
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: 14, overflow: 'hidden',
+              backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' as 'hidden',
+            }}>
+              <div style={{ width: 168, height: 305, transform: `scale(${W / 168})`, transformOrigin: 'top left' }}>
+                <Back />
+              </div>
+            </div>
+
+            {/* ── Back: action card — official Figma artwork ──────── */}
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: 14, overflow: 'hidden',
+              backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' as 'hidden',
+              transform: 'rotateY(180deg)',
+            }}>
+              <img src={card.img} alt={card.title} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {flipped && (
+        <button
+          onClick={onContinue}
+          style={{
+            padding: '12px 40px', borderRadius: 12, border: 'none',
+            background: '#0096A9', color: 'white',
+            fontFamily: BOLD, fontWeight: 700, fontSize: 16, cursor: 'pointer',
+          }}
+        >
+          Continue
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Info icon — opens the digital game manual ──────────────────────────────
+function InfoIconButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="How to play"
+      style={{
+        position: 'fixed', top: 16, right: 16, zIndex: 40,
+        width: 38, height: 38, borderRadius: '50%',
+        border: 'none', background: '#1a5e3a',
+        color: 'white', fontFamily: BOLD, fontWeight: 700, fontSize: 17,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      i
+    </button>
+  );
+}
+
+// ── Digital game manual — "Online Game Manual" from Figma ──────────────────
+function GameManualModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 70,
+        background: 'rgba(10,50,15,0.62)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16, backdropFilter: 'blur(2px)',
+      }}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        style={{
+          position: 'fixed', top: 16, right: 16, zIndex: 71,
+          width: 34, height: 34, borderRadius: '50%',
+          border: '2px solid #d1d5db', background: 'white', color: '#6b7280',
+          fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
+        }}
+      >
+        ✕
+      </button>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'white', borderRadius: 16,
+          maxWidth: 900, width: '100%', maxHeight: '92vh',
+          overflow: 'auto', lineHeight: 0,
+        }}
+      >
+        <img
+          src={manualFull}
+          alt="How to play — Don't Leaf it to Chance game manual"
+          style={{ display: 'block', width: '100%', height: 'auto' }}
+        />
       </div>
     </div>
   );
@@ -459,20 +725,27 @@ export default function App() {
   const [turnState, setTurnState] = useState<TurnState>('idle');
   const [question, setQuestion]       = useState<typeof QUESTIONS[0] | null>(null);
   const [cardOverlayOpen, setCardOverlayOpen] = useState(false);
+  const [actionCard, setActionCard]   = useState<ActionCard | null>(null);
+  const [actionCardOpen, setActionCardOpen] = useState(false);
+  const [tokens, setTokens] = useState<Record<string, { name: string; img: string; effect: 'skip' | 'loseLeaf' }>>({});
+  const [pendingTrap, setPendingTrap] = useState<ActionCard | null>(null);
   const [logs, setLogs]           = useState<string[]>([]);
   const [winner, setWinner]       = useState<Player | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
   const ivRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const usedQs = useRef(new Set<number>());
+  const usedCardIdx = useRef(new Set<number>());
 
   const addLog = (msg: string) => setLogs(p => [msg, ...p].slice(0, 5));
 
   const startGame = (configs: Array<{ name: string; charIdx: number }>) => {
     const built = configs.map((cfg, i) => ({
-      id: i, img: CHARS[cfg.charIdx].img, name: cfg.name.trim() || `Player ${i + 1}`,
+      id: i, img: CHARS[cfg.charIdx].img, butterflyImg: CHARS[cfg.charIdx].butterfly, name: cfg.name.trim() || `Player ${i + 1}`,
       color: CHARS[cfg.charIdx].color, ringIdx: -1, seg: 0, leaves: 0,
     }));
     setPlayers(built);
     setCurIdx(0); setDieVal(1); setTurnState('idle'); setCardOverlayOpen(false);
+    setActionCard(null); setActionCardOpen(false); setTokens({}); setPendingTrap(null);
+    usedCardIdx.current.clear();
     setLogs([`${built[0].name} goes first!`]);
     setPhase('play');
   };
@@ -488,6 +761,50 @@ export default function App() {
       setRolling(false);
       processMove(roll);
     }, 650);
+  };
+
+  // Shared "what happens when you land here" resolver — used by dice rolls
+  // and by extra movement (e.g. the Tailwind action card).
+  const resolveLanding = (ri: number, seg: number) => {
+    const p = players[curIdx];
+    const key = `${ri}-${seg}`;
+    const tok = tokens[key];
+
+    if (tok) {
+      if (p.shield) {
+        setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, shield: false } : pl));
+        addLog(`${p.name} was protected by Camouflage from the ${tok.name}!`);
+      } else if (tok.effect === 'skip') {
+        setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, skipNext: true } : pl));
+        addLog(`${p.name} got stuck on the ${tok.name} and will skip their next turn!`);
+      } else {
+        const nl = Math.max(0, p.leaves - 1);
+        setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, leaves: nl } : pl));
+        addLog(`${p.name} landed on the ${tok.name} and lost 1 🍃`);
+      }
+      setTokens(prev => { const next = { ...prev }; delete next[key]; return next; });
+      setTurnState('moved');
+      return;
+    }
+
+    const kind = segKind(ri, seg);
+    if (kind === 'trivia') {
+      let ci = Math.floor(Math.random() * DECK.length);
+      for (let t = 0; t < DECK.length; t++) {
+        if (!usedCardIdx.current.has(ci)) break;
+        ci = (ci + 1) % DECK.length;
+        if (t === DECK.length - 1) usedCardIdx.current.clear();
+      }
+      usedCardIdx.current.add(ci);
+      const card = DECK[ci];
+      if (card.cat === 'trivia') { setQuestion(card.data); setTurnState('card'); }
+      else { setActionCard(card.data); setTurnState('action'); }
+    } else if (kind === 'gate') {
+      if (p.leaves >= 3) setTurnState('gate');
+      else { addLog(`${p.name} at gate — need ${3 - p.leaves} more 🍃`); setTurnState('moved'); }
+    } else {
+      setTurnState('moved');
+    }
   };
 
   const processMove = (roll: number) => {
@@ -507,23 +824,23 @@ export default function App() {
     setPlayers(prev => prev.map((pl, i) =>
       i === curIdx ? { ...pl, ringIdx: ri, seg } : pl
     ));
+    resolveLanding(ri, seg);
+  };
 
-    const kind = segKind(ri, seg);
-    if (kind === 'trivia') {
-      let qi = Math.floor(Math.random() * QUESTIONS.length);
-      for (let t = 0; t < QUESTIONS.length; t++) {
-        if (!usedQs.current.has(qi)) break;
-        qi = (qi + 1) % QUESTIONS.length;
-        if (t === QUESTIONS.length - 1) usedQs.current.clear();
-      }
-      usedQs.current.add(qi);
-      setQuestion(QUESTIONS[qi]); setTurnState('card');
-    } else if (kind === 'gate') {
-      if (p.leaves >= 3) setTurnState('gate');
-      else { addLog(`${p.name} at gate — need ${3 - p.leaves} more 🍃`); setTurnState('moved'); }
-    } else {
-      setTurnState('moved');
-    }
+  // Extra movement granted by an action card (e.g. Tailwind's +2 spaces).
+  const advanceExtra = (n: number) => {
+    const p = players[curIdx];
+    const ri = p.ringIdx < 0 ? 0 : p.ringIdx;
+    const segCount = RING_SEGS[ri];
+    const seg = (p.seg + n) % segCount;
+    addLog(`${p.name} rides the tailwind ${n} spaces ahead → tile ${seg + 1}`);
+    setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, ringIdx: ri, seg } : pl));
+    resolveLanding(ri, seg);
+  };
+
+  const finishAfterCard = (p: Player, leaves: number) => {
+    if (segKind(p.ringIdx >= 0 ? p.ringIdx : 0, p.seg) === 'gate' && leaves >= 3) setTurnState('gate');
+    else setTurnState('moved');
   };
 
   const doAnswer = (optIdx: number) => {
@@ -540,9 +857,99 @@ export default function App() {
       addLog(`${p.name} wrong — no leaf this time.`);
     }
     setQuestion(null);
-    if (segKind(p.ringIdx >= 0 ? p.ringIdx : 0, p.seg) === 'gate' && newLeaves >= 3)
-      setTurnState('gate');
-    else setTurnState('moved');
+    finishAfterCard(p, newLeaves);
+  };
+
+  // Resolve the currently-drawn action card. Trap and steal cards need a
+  // follow-up interaction (placing a token / picking a target) handled by
+  // placeToken() and stealFrom() below.
+  const doActionCard = () => {
+    if (!actionCard) return;
+    const p = players[curIdx];
+    switch (actionCard.kind) {
+      case 'keepLeaf': {
+        const newLeaves = p.leaves + 1;
+        setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, leaves: newLeaves } : pl));
+        addLog(`${p.name} keeps "${actionCard.title}" as a leaf card! (+1 🍃)`);
+        setActionCard(null);
+        finishAfterCard(p, newLeaves);
+        break;
+      }
+      case 'shield': {
+        setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, shield: true } : pl));
+        addLog(`${p.name} is camouflaged and protected from the next predator!`);
+        setActionCard(null);
+        finishAfterCard(p, p.leaves);
+        break;
+      }
+      case 'instantLoseLeaf': {
+        if (p.shield) {
+          setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, shield: false } : pl));
+          addLog(`${p.name} was protected by Camouflage from "${actionCard.title}"!`);
+          setActionCard(null);
+          finishAfterCard(p, p.leaves);
+        } else {
+          const newLeaves = Math.max(0, p.leaves - 1);
+          setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, leaves: newLeaves } : pl));
+          addLog(`${p.name}: ${actionCard.title} — lost 1 🍃`);
+          setActionCard(null);
+          finishAfterCard(p, newLeaves);
+        }
+        break;
+      }
+      case 'instantAdvance': {
+        const amount = actionCard.amount ?? 1;
+        setActionCard(null);
+        advanceExtra(amount);
+        break;
+      }
+      case 'trap': {
+        setPendingTrap(actionCard);
+        setActionCard(null);
+        setTurnState('placingToken');
+        break;
+      }
+      case 'instantSteal': {
+        setActionCard(null);
+        if (players.length > 1) setTurnState('chooseTarget');
+        else finishAfterCard(p, p.leaves);
+        break;
+      }
+    }
+  };
+
+  const placeToken = (ri: number, seg: number) => {
+    if (!pendingTrap) return;
+    const key = `${ri}-${seg}`;
+    if (tokens[key]) return; // already occupied — pick another tile
+    setTokens(prev => ({
+      ...prev,
+      [key]: { name: pendingTrap.tokenName!, img: pendingTrap.tokenImg!, effect: pendingTrap.trapEffect! },
+    }));
+    addLog(`${players[curIdx].name} placed the ${pendingTrap.tokenName} on Ring ${ri + 1}, tile ${seg + 1}.`);
+    setPendingTrap(null);
+    setTurnState('moved');
+  };
+
+  const stealFrom = (targetIdx: number) => {
+    const p = players[curIdx];
+    const target = players[targetIdx];
+    if (target.shield) {
+      setPlayers(prev => prev.map((pl, i) => i === targetIdx ? { ...pl, shield: false } : pl));
+      addLog(`${target.name} was protected by Camouflage!`);
+      finishAfterCard(p, p.leaves);
+    } else if (target.leaves <= 0) {
+      addLog(`${target.name} had no leaves to take.`);
+      finishAfterCard(p, p.leaves);
+    } else {
+      setPlayers(prev => prev.map((pl, i) => {
+        if (i === targetIdx) return { ...pl, leaves: pl.leaves - 1 };
+        if (i === curIdx) return { ...pl, leaves: pl.leaves + 1 };
+        return pl;
+      }));
+      addLog(`${p.name} took a leaf from ${target.name}!`);
+      finishAfterCard(p, p.leaves + 1);
+    }
   };
 
   const doAdvance = () => {
@@ -565,12 +972,20 @@ export default function App() {
   };
 
   const doNextTurn = () => {
-    setTurnState('idle'); setCardOverlayOpen(false);
+    setTurnState('idle'); setCardOverlayOpen(false); setActionCardOpen(false);
     const n = players.length;
     let next = (curIdx + 1) % n;
-    for (let i = 1; i <= n; i++) {
+    const stuck: number[] = [];
+    for (let i = 1; i <= n * 2; i++) {
       const idx = (curIdx + i) % n;
-      if (players[idx].ringIdx < 3) { next = idx; break; }
+      if (players[idx].ringIdx >= 3) continue;
+      if (players[idx].skipNext) { stuck.push(idx); continue; }
+      next = idx;
+      break;
+    }
+    if (stuck.length) {
+      setPlayers(prev => prev.map((pl, i) => stuck.includes(i) ? { ...pl, skipNext: false } : pl));
+      stuck.forEach(i => addLog(`${players[i].name} is stuck and skips their turn!`));
     }
     setCurIdx(next);
     addLog(`${players[next].name}'s turn.`);
@@ -604,11 +1019,13 @@ export default function App() {
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', padding: '12px 8px', gap: 12,
     }}>
+      {!manualOpen && <InfoIconButton onClick={() => setManualOpen(true)} />}
+      {manualOpen && <GameManualModal onClose={() => setManualOpen(false)} />}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center' }}>
 
         {/* ── Board SVG ─────────────────────────────────────────── */}
         <svg
-          width={SZ} height={SZ}
+          width={BOARD_DISPLAY_SZ} height={BOARD_DISPLAY_SZ}
           viewBox={`0 0 ${SZ} ${SZ}`}
           style={{ display: 'block', overflow: 'visible', flexShrink: 0 }}
         >
@@ -616,13 +1033,14 @@ export default function App() {
           <circle cx={CX} cy={CY} r={BOARD_R} fill="#3EAA4A" />
           <circle cx={CX} cy={CY} r={BOARD_R} fill="none" stroke="#2E8A38" strokeWidth={8} />
 
-          {/* ── Ring path tracks (slightly lighter bands so paths are visible) ── */}
+          {/* ── Ring path tracks (subtle bands, barely lighter than the board) ── */}
           {([0, 1, 2] as const).map(ri => (
             <circle key={`track-${ri}`}
               cx={CX} cy={CY}
               r={RING_MID[ri]}
               fill="none"
-              stroke="#4DC462"
+              stroke="#45AC50"
+              opacity={0.55}
               strokeWidth={RINGS_DEF[ri].outer - RINGS_DEF[ri].inner}
             />
           ))}
@@ -641,13 +1059,19 @@ export default function App() {
               const isTrivia = kind === 'trivia';
               const isLandedTile =
                 turnState !== 'idle' && ri === cur.ringIdx && seg === cur.seg;
+              const tileKey = `${ri}-${seg}`;
+              const tok = tokens[tileKey];
+              const isPlaceable = turnState === 'placingToken' && !tok;
 
               return (
-                <g key={`${ri}-${seg}`}>
+                <g key={tileKey}
+                  onClick={isPlaceable ? () => placeToken(ri, seg) : undefined}
+                  style={{ cursor: isPlaceable ? 'pointer' : 'default' }}
+                >
                   {/* Pulse ring when player is on this tile */}
                   {isLandedTile && (
                     <circle cx={x} cy={y} r={TILE_R + 8} fill="none"
-                      stroke={isTrivia ? '#7FD6E0' : 'white'} strokeWidth={3.5}>
+                      stroke="white" strokeWidth={3.5}>
                       <animate attributeName="r"
                         values={`${TILE_R + 5};${TILE_R + 16};${TILE_R + 5}`}
                         dur="1.2s" repeatCount="indefinite" />
@@ -655,21 +1079,38 @@ export default function App() {
                         values="0.9;0;0.9" dur="1.2s" repeatCount="indefinite" />
                     </circle>
                   )}
+                  {/* Dashed invite ring while choosing where to place a trap token */}
+                  {isPlaceable && (
+                    <circle cx={x} cy={y} r={TILE_R + 6} fill="none"
+                      stroke="#e05a5a" strokeWidth={2.5} strokeDasharray="4 4">
+                      <animateTransform attributeName="transform" type="rotate"
+                        from={`0 ${x} ${y}`} to={`360 ${x} ${y}`} dur="6s" repeatCount="indefinite" />
+                    </circle>
+                  )}
                   <circle
                     cx={x} cy={y} r={TILE_R}
-                    fill={isTrivia ? '#0096A9' : '#E2F8DC'}
-                    stroke={isTrivia ? 'white' : '#B8E4B0'}
+                    fill={isTrivia ? '#d0e497' : '#ffffff'}
+                    stroke="white"
                     strokeWidth={isTrivia ? 3 : 2}
                   />
                   {isTrivia && (
                     <text
                       x={x} y={y}
                       textAnchor="middle" dominantBaseline="central"
-                      fontSize={21} fill="#00444d"
+                      fontSize={21} fill="#334207"
                       fontFamily={FONT}
                       style={{ userSelect: 'none', fontWeight: 700 }}>
                       ?
                     </text>
+                  )}
+                  {/* Trap token sitting on this space */}
+                  {tok && (
+                    <image
+                      href={tok.img}
+                      x={x - TILE_R} y={y - TILE_R}
+                      width={TILE_R * 2} height={TILE_R * 2}
+                      style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.35))' }}
+                    />
                   )}
                 </g>
               );
@@ -680,7 +1121,7 @@ export default function App() {
           <defs>
             <marker id="darr" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto">
               <polyline points="0,0.5 4.5,3 0,5.5"
-                fill="none" stroke="rgba(255,255,255,0.75)"
+                fill="none" stroke="white"
                 strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </marker>
           </defs>
@@ -705,7 +1146,7 @@ export default function App() {
                 return (
                   <path key={`da-${ri}-${ai}`}
                     d={`M ${x1} ${y1} A ${mr} ${mr} 0 0 1 ${x2} ${y2}`}
-                    fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth={4}
+                    fill="none" stroke="white" strokeWidth={4}
                     strokeLinecap="round" markerEnd="url(#darr)"
                   />
                 );
@@ -717,10 +1158,10 @@ export default function App() {
 
           {/* ── Center "Start" circle ─────────────────────────── */}
           <circle cx={CX} cy={CY} r={CENTER_R + 8} fill="#2E8A38" />
-          <circle cx={CX} cy={CY} r={CENTER_R}     fill="#D8F5CE" />
+          <circle cx={CX} cy={CY} r={CENTER_R}     fill="#ffffff" />
           <text x={CX} y={CY - 10}
             textAnchor="middle" dominantBaseline="central"
-            fontSize={14} fill="#2a6e32"
+            fontSize={14} fill="#334207"
             fontFamily={FONT} style={{ userSelect: 'none', fontWeight: 700 }}>
             Start
           </text>
@@ -779,33 +1220,26 @@ export default function App() {
               let dx = 0, dy = 0;
               if (count > 1) {
                 const angle = (idx / count) * Math.PI * 2 - Math.PI / 2;
-                const off = count === 2 ? 14 : 16;
+                const off = count === 2 ? 18 : 20;
                 dx = off * Math.cos(angle); dy = off * Math.sin(angle);
               }
               const tx = base.x + dx, ty = base.y + dy;
               const active = p.id === curIdx;
-              const tokenSz = 46;
+              const tokenSz = 58;
               const half = tokenSz / 2;
               return (
                 <g key={p.id}>
-                  {/* Active glow ring */}
+                  {/* Active player ring */}
                   {active && (
-                    <circle cx={tx} cy={ty} r={28} fill="none"
-                      stroke={p.color} strokeWidth={3.5}>
-                      <animate attributeName="r"       values="24;32;24"    dur="1.3s" repeatCount="indefinite" />
-                      <animate attributeName="opacity" values="0.85;0;0.85" dur="1.3s" repeatCount="indefinite" />
-                    </circle>
+                    <circle cx={tx} cy={ty} r={half + 6} fill="none"
+                      stroke={p.color} strokeWidth={3.5} />
                   )}
                   {/* Caterpillar sticker image */}
                   <image
                     href={p.img}
                     x={tx - half} y={ty - half}
                     width={tokenSz} height={tokenSz}
-                    style={{
-                      filter: active
-                        ? `drop-shadow(0 0 5px ${p.color}cc) drop-shadow(0 2px 4px rgba(0,0,0,0.4))`
-                        : 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
-                    }}
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' }}
                   />
                 </g>
               );
@@ -816,142 +1250,133 @@ export default function App() {
         {/* ── Sidebar ──────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 256 }}>
 
-          {/* Current player */}
-          <div style={{
-            background: 'white', borderRadius: 20, padding: 16,
-            border: `3px solid ${cur.color}`,
-          }}>
-            <div style={{ fontSize: 10, color: '#9ca3af', letterSpacing: 2, marginBottom: 10, fontFamily: FONT }}>
-              CURRENT TURN
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: 14,
-                background: cur.color + '22',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `2px solid ${cur.color}55`,
-              }}>
-                <img src={cur.img} alt={cur.name} style={{ width: 48, height: 48, objectFit: 'contain' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 22, color: '#1a5e3a', fontWeight: 700, fontFamily: FONT }}>{cur.name}</div>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2, fontFamily: FONT }}>
-                  {cur.ringIdx < 0 ? 'Center (Start)' : `Ring ${cur.ringIdx + 1} · Tile ${cur.seg + 1}`}
-                </div>
-              </div>
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 10, color: '#9ca3af', letterSpacing: 2, marginBottom: 6, fontFamily: FONT }}>
-                LEAVES (need 3 to advance)
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[0, 1, 2].map(i => (
-                  <span key={i} style={{
-                    fontSize: 28,
-                    filter: i < cur.leaves ? 'none' : 'grayscale(1) opacity(0.22)',
-                    transition: 'filter 0.3s',
-                  }}>🍃</span>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Die + roll/turn actions */}
-          <div style={{ background: 'white', borderRadius: 20, padding: 16, border: '2px solid #CAECC3' }}>
+          <div style={{ background: 'white', borderRadius: 20, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+              <img src={cur.img} alt={cur.name} style={{ width: 44, height: 44, objectFit: 'contain' }} />
+              <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15, color: '#374151' }}>{cur.name}'s turn</span>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
               <Die val={dieVal} rolling={rolling} />
             </div>
             {turnState === 'idle' && (
               <button onClick={doRoll} disabled={rolling} style={{
                 width: '100%', padding: '12px 0', borderRadius: 14, border: 'none',
-                background: rolling ? '#e5e7eb' : '#0096A9',
+                background: rolling ? '#e5e7eb' : '#5F7A34',
                 color: rolling ? '#9ca3af' : 'white',
                 fontSize: 17, fontWeight: 700, cursor: rolling ? 'not-allowed' : 'pointer',
                 fontFamily: FONT,
               }}>
-                {rolling ? 'Rolling…' : '🎲 Roll Dice!'}
+                {rolling ? 'Rolling…' : 'Roll Dice!'}
               </button>
             )}
             {turnState === 'moved' && (
               <button onClick={doNextTurn} style={{
                 width: '100%', padding: '12px 0', borderRadius: 14, border: 'none',
-                background: '#4CB85E', color: 'white',
+                background: '#5F7A34', color: 'white',
                 fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
               }}>
                 Next Turn →
               </button>
             )}
-            {turnState === 'card' && (
+            {(turnState === 'card' || turnState === 'action') && (
               <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#9ca3af', fontFamily: FONT }}>
-                Landed on a trivia tile!
+                Landed on a card tile!
+              </div>
+            )}
+            {turnState === 'placingToken' && (
+              <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#e05a5a', fontWeight: 700, fontFamily: FONT }}>
+                Click a tile on the board to place the {pendingTrap?.tokenName}
+              </div>
+            )}
+            {turnState === 'chooseTarget' && (
+              <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#0096A9', fontWeight: 700, fontFamily: FONT }}>
+                Choose a player below to take a leaf from
               </div>
             )}
             {turnState === 'gate' && (
-              <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#4CB85E', fontWeight: 700, fontFamily: FONT }}>
-                🍃 Gate reached!
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 0', fontSize: 13, color: '#4CB85E', fontWeight: 700, fontFamily: FONT }}>
+                <LeafIcon size={14} /> Gate reached!
               </div>
             )}
           </div>
 
-          {/* Trivia card deck — tap to open the centered overlay */}
-          {turnState === 'card' && question && (
-            <div style={{ background: 'white', borderRadius: 20, padding: 16, border: '2px solid #0096A9', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 10, color: '#0096A9', letterSpacing: 2, fontFamily: FONT, fontWeight: 700 }}>DRAW A CARD</div>
-              <CardDeckPreview onClick={() => setCardOverlayOpen(true)} />
+          {/* Card deck — always sits on the table; opens the overlay once a card is drawn */}
+          {(() => {
+            const hasCard = (turnState === 'card' && !!question) || (turnState === 'action' && !!actionCard);
+            return (
+              <div style={{ background: 'white', borderRadius: 20, padding: 16, border: hasCard ? '2px solid #0096A9' : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontSize: 10, color: hasCard ? '#0096A9' : '#9ca3af', letterSpacing: 2, fontFamily: FONT, fontWeight: 700 }}>
+                  {hasCard ? 'Draw a Card' : 'Card Deck'}
+                </div>
+                <CardDeckPreview onClick={() => {
+                  if (turnState === 'card') setCardOverlayOpen(true);
+                  else if (turnState === 'action') setActionCardOpen(true);
+                }} />
+              </div>
+            );
+          })()}
+
+          {/* Choose-target picker for steal-type action cards */}
+          {turnState === 'chooseTarget' && (
+            <div style={{ background: 'white', borderRadius: 20, padding: 16, border: '2px solid #0096A9', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {players.map((pl, i) => i !== curIdx && (
+                <button key={pl.id} onClick={() => stealFrom(i)} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 12px', borderRadius: 12, border: `2px solid ${pl.color}55`,
+                  background: pl.color + '10', cursor: 'pointer', textAlign: 'left',
+                }}>
+                  <img src={pl.img} alt={pl.name} style={{ width: 28, height: 28, objectFit: 'contain' }} />
+                  <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 14, color: '#1a5e3a' }}>{pl.name}</span>
+                  <span style={{ marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: '#9ca3af' }}>{pl.leaves} 🍃</span>
+                </button>
+              ))}
             </div>
           )}
 
-          {/* Players */}
-          <div style={{ background: 'white', borderRadius: 20, padding: 16, border: '2px solid #CAECC3' }}>
-            <div style={{ fontSize: 10, color: '#9ca3af', letterSpacing: 2, marginBottom: 10, fontFamily: FONT }}>PLAYERS</div>
-            {players.map((p, i) => (
-              <div key={p.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
-                opacity: p.ringIdx >= 3 ? 0.4 : 1,
-              }}>
+        </div>
+
+        {/* ── Players column — beside the board and sidebar ─────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 160, flexShrink: 0 }}>
+          {players.map((p, i) => (
+            <div key={p.id} style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
+              background: 'white', borderRadius: 16, padding: '12px 16px',
+              border: '3px solid transparent',
+              opacity: p.ringIdx >= 3 ? 0.4 : 1,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: p.color + '22', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', flexShrink: 0,
-                  border: i === curIdx ? `2.5px solid ${p.color}` : '2.5px solid transparent',
+                  width: 52, height: 52, borderRadius: 12,
+                  background: p.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
                 }}>
-                  <img src={p.img} alt={p.name} style={{ width: 30, height: 30, objectFit: 'contain' }} />
+                  <img src={p.img} alt={p.name} style={{ width: 44, height: 44, objectFit: 'contain' }} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: i === curIdx ? 700 : 500, color: i === curIdx ? '#1a5e3a' : '#6b7280', fontFamily: FONT }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 14, fontWeight: i === curIdx ? 700 : 500, color: i === curIdx ? '#374151' : '#6b7280', fontFamily: FONT }}>
                     {p.name}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#9ca3af', fontFamily: FONT }}>
-                    {p.ringIdx < 0 ? 'Center' : p.ringIdx >= 3 ? '🏁 Finished!' : `Ring ${p.ringIdx + 1}`}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 2 }}>
-                  {[0, 1, 2].map(l => (
-                    <span key={l} style={{ fontSize: 13, filter: l < p.leaves ? 'none' : 'grayscale(1) opacity(0.22)' }}>🍃</span>
-                  ))}
+                  </span>
+                  {p.shield && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: '#0096A9',
+                      background: '#e8f7f9', borderRadius: 6, padding: '1px 6px', fontFamily: FONT, alignSelf: 'flex-start',
+                    }}>PROTECTED</span>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-
-
-          {/* Legend */}
-          <div style={{ background: 'white', borderRadius: 20, padding: 16, border: '2px solid #CAECC3' }}>
-            <div style={{ fontSize: 10, color: '#9ca3af', letterSpacing: 2, marginBottom: 10, fontFamily: FONT }}>LEGEND</div>
-            {[
-              { mark: '?',  bg: '#e0f7fa', fg: '#00444d', label: 'Trivia — answer to earn 🍃' },
-              { mark: '🍃', bg: '#f0fdf4', fg: '#15803d', label: '×3 gate — need 3 🍃 to pass' },
-            ].map(({ mark, bg, fg, label }) => (
-              <div key={mark} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 14, background: bg,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14, color: fg, fontWeight: 700, flexShrink: 0, fontFamily: FONT,
-                }}>{mark}</div>
-                <span style={{ fontSize: 11, color: '#6b7280', fontFamily: FONT }}>{label}</span>
+              <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {Array.from({ length: Math.max(3, p.leaves) }, (_, l) => (
+                  <LeafIcon key={l} size={12} style={{ filter: l < p.leaves ? 'none' : 'grayscale(1) opacity(0.22)' }} />
+                ))}
               </div>
-            ))}
-          </div>
+              {i === curIdx && (
+                <div style={{ fontSize: 11, fontWeight: 700, color: p.color, fontFamily: FONT }}>
+                  Current Turn
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -962,6 +1387,17 @@ export default function App() {
           onAnswer={(idx) => {
             setCardOverlayOpen(false);
             doAnswer(idx);
+          }}
+        />
+      )}
+
+      {/* ── Action card overlay — centred full-screen flip ───────── */}
+      {actionCardOpen && actionCard && (
+        <ActionCardOverlay
+          card={actionCard}
+          onContinue={() => {
+            setActionCardOpen(false);
+            doActionCard();
           }}
         />
       )}
@@ -977,7 +1413,9 @@ export default function App() {
             background: 'white', borderRadius: 28, padding: 32, maxWidth: 380, width: '100%',
             textAlign: 'center', border: '3px solid #4CB85E',
           }}>
-            <div style={{ fontSize: 52, marginBottom: 8 }}>🍃🍃🍃</div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
+              <LeafIcon size={44} /><LeafIcon size={44} /><LeafIcon size={44} />
+            </div>
             <div style={{ fontSize: 26, color: '#1a5e3a', fontWeight: 700, marginBottom: 6, fontFamily: FONT }}>
               You have 3 leaves!
             </div>
@@ -992,7 +1430,7 @@ export default function App() {
               background: '#0096A9', color: 'white',
               fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
             }}>
-              🌿 Advance to Next Ring!
+              Advance to Next Ring!
             </button>
           </div>
         </div>
@@ -1003,47 +1441,75 @@ export default function App() {
 
 // ── Setup screen ───────────────────────────────────────────────────────────
 function SetupScreen({ onSelectCount }: { onSelectCount: (n: number) => void }) {
+  const [manualOpen, setManualOpen] = useState(false);
   return (
     <div style={{
-      minHeight: '100vh', background: '#d8f0d8',
+      minHeight: '100vh', background: '#ffffff',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       gap: 36, fontFamily: FONT,
     }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{ color: '#1a5e3a', fontSize: 54, margin: 0, fontWeight: 700 }}>🌿 Leaf Trail</h1>
-        <p style={{ color: '#6b7280', marginTop: 8, fontSize: 16, maxWidth: 360, margin: '8px auto 0', fontFamily: FONT }}>
-          Answer trivia to earn leaves 🍃 · Collect 3 to pass each gate · Spiral out to the finish!
+      {!manualOpen && <InfoIconButton onClick={() => setManualOpen(true)} />}
+      {manualOpen && <GameManualModal onClose={() => setManualOpen(false)} />}
+      <div style={{
+        textAlign: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+      }}>
+        {/* Leaf graphic, sitting above the title */}
+        <div style={{
+          width: 190, height: 173, marginBottom: -30,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ transform: 'rotate(-125.34deg)' }}>
+            <div style={{ width: 93, height: 165 }}>
+              <img src={leafLogo} alt="" style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+          </div>
+        </div>
+
+        <h1 style={{
+          fontFamily: FONT, fontWeight: 700, fontSize: 44, lineHeight: '48px',
+          margin: 0, color: '#ffffff', WebkitTextStroke: '3px #3f4d28',
+          textShadow: [
+            '-2px -2px 0 #3f4d28', '2px -2px 0 #3f4d28',
+            '-2px 2px 0 #3f4d28', '2px 2px 0 #3f4d28',
+            '0 3px 0 #3f4d28', '0 -3px 0 #3f4d28',
+            '3px 0 0 #3f4d28', '-3px 0 0 #3f4d28',
+          ].join(', '),
+        }}>
+          Don't Leaf it to Chance!
+        </h1>
+        <p style={{
+          fontFamily: FONT, fontWeight: 400, fontSize: 15, color: '#69861b', margin: 0, whiteSpace: 'nowrap',
+        }}>
+          a butterfly life-cycle &amp; migration game
         </p>
       </div>
 
       <div>
-        <div style={{ textAlign: 'center', marginBottom: 18, fontSize: 13, color: '#9ca3af', letterSpacing: 2, fontFamily: FONT }}>
-          HOW MANY PLAYERS?
-        </div>
-        <div style={{ display: 'flex', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 18, justifyContent: 'center' }}>
           {[2, 3, 4].map(n => (
             <button key={n} onClick={() => onSelectCount(n)} style={{
-              width: 130, height: 140, borderRadius: 22,
-              border: '3px solid #CAECC3', background: 'white',
-              color: '#1a5e3a', cursor: 'pointer',
+              width: 160, height: 170, borderRadius: 26,
+              border: '3px solid #d1d5db', background: 'white',
+              color: '#374151', cursor: 'pointer',
               display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 6,
+              alignItems: 'center', justifyContent: 'center', gap: 8,
               fontFamily: FONT, transition: 'all 0.15s',
             }}
               onMouseEnter={e => Object.assign(e.currentTarget.style, {
-                borderColor: '#0096A9', transform: 'scale(1.06)',
+                borderColor: '#1a5e3a', transform: 'scale(1.06)',
               })}
               onMouseLeave={e => Object.assign(e.currentTarget.style, {
-                borderColor: '#CAECC3', transform: 'scale(1)',
+                borderColor: '#d1d5db', transform: 'scale(1)',
               })}>
-              <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', justifyContent: 'center', width: 96 }}>
+              <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', justifyContent: 'center', width: 112 }}>
                 {CHARS.slice(0, n).map(c => (
                   <img key={c.name} src={c.img} alt={c.name}
-                    style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                    style={{ width: 48, height: 48, objectFit: 'contain' }} />
                 ))}
               </div>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>{n} Players</span>
+              <span style={{ fontSize: 18, fontWeight: 700 }}>{n} Players</span>
             </button>
           ))}
         </div>
@@ -1062,32 +1528,29 @@ function PlayerSetupScreen({
   onStart: (configs: Array<{ name: string; charIdx: number }>) => void;
   onBack: () => void;
 }) {
-  const [setups, setSetups] = useState(() =>
-    Array.from({ length: count }, (_, i) => ({ name: '', charIdx: i }))
+  const [setups, setSetups] = useState<Array<{ name: string; charIdx: number | null }>>(() =>
+    Array.from({ length: count }, () => ({ name: '', charIdx: null }))
   );
 
-  const takenChars = new Set(setups.map(s => s.charIdx));
+  const takenChars = new Set(setups.map(s => s.charIdx).filter((ci): ci is number => ci !== null));
 
   const setName = (pi: number, val: string) =>
     setSetups(prev => prev.map((s, i) => i === pi ? { ...s, name: val } : s));
 
   const setChar = (pi: number, ci: number) =>
-    setSetups(prev => prev.map((s, i) => i === pi ? { ...s, charIdx: ci } : s));
+    setSetups(prev => prev.map((s, i) => i === pi ? { ...s, charIdx: s.charIdx === ci ? null : ci } : s));
 
-  const allValid = setups.every(s => s.name.trim().length > 0);
-
-  const PLAYER_LABELS = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
-  const PLAYER_COLORS = ['#e05a5a', '#9b4dca', '#4b7bbf', '#e87c2a'];
+  const allValid = setups.every(s => s.name.trim().length > 0 && s.charIdx !== null);
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#d8f0d8',
+      minHeight: '100vh', background: '#ffffff',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       gap: 28, fontFamily: FONT, padding: '24px 16px',
     }}>
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ color: '#1a5e3a', fontSize: 36, margin: 0, fontWeight: 700 }}>
+        <h2 style={{ color: '#374151', fontSize: 36, margin: 0, fontWeight: 700 }}>
           Choose Your Bug
         </h2>
         <p style={{ color: '#6b7280', margin: '6px 0 0', fontSize: 14, fontFamily: FONT }}>
@@ -1100,36 +1563,33 @@ function PlayerSetupScreen({
         maxWidth: 920,
       }}>
         {setups.map((setup, pi) => {
-          const accent = PLAYER_COLORS[pi];
+          const picked = setup.charIdx !== null;
+          const accent = picked ? CHARS[setup.charIdx!].color : '#9ca3af';
           return (
             <div key={pi} style={{
               background: 'white', borderRadius: 24,
-              border: `3px solid ${accent}55`,
+              border: '3px solid #e5e7eb',
               padding: '20px 18px',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
               width: 200, flexShrink: 0,
-              boxShadow: `0 4px 18px ${accent}18`,
             }}>
-              {/* Player label */}
-              <div style={{
-                fontSize: 11, letterSpacing: 2, color: accent,
-                fontWeight: 700, fontFamily: FONT,
-              }}>
-                {PLAYER_LABELS[pi]}
-              </div>
-
               {/* Selected character large preview */}
               <div style={{
                 width: 80, height: 80, borderRadius: 20,
-                background: accent + '18',
-                border: `2.5px solid ${accent}55`,
+                background: picked ? accent + '18' : '#f3f4f6',
+                border: picked ? `2.5px solid ${accent}55` : '2.5px dashed #d1d5db',
+                transition: 'background 0.15s, border-color 0.15s',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <img
-                  src={CHARS[setup.charIdx].img}
-                  alt={CHARS[setup.charIdx].name}
-                  style={{ width: 66, height: 66, objectFit: 'contain' }}
-                />
+                {picked ? (
+                  <img
+                    src={CHARS[setup.charIdx!].img}
+                    alt={CHARS[setup.charIdx!].name}
+                    style={{ width: 66, height: 66, objectFit: 'contain' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 28, fontWeight: 700, color: '#d1d5db', fontFamily: FONT }}>?</span>
+                )}
               </div>
 
               {/* Name input */}
@@ -1141,24 +1601,15 @@ function PlayerSetupScreen({
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   padding: '9px 12px', borderRadius: 12,
-                  border: `2px solid ${setup.name.trim() ? accent + '77' : '#d1d5db'}`,
+                  border: '2px solid #d1d5db',
                   fontFamily: FONT, fontSize: 15, fontWeight: 700,
-                  color: '#1a5e3a', outline: 'none',
-                  background: setup.name.trim() ? accent + '08' : 'white',
-                  transition: 'border-color 0.15s, background 0.15s',
+                  color: '#374151', outline: 'none',
+                  background: 'white',
                 }}
-                onFocus={e => { e.currentTarget.style.borderColor = accent; }}
-                onBlur={e => { e.currentTarget.style.borderColor = setup.name.trim() ? accent + '77' : '#d1d5db'; }}
               />
 
               {/* Character selector grid */}
               <div>
-                <div style={{
-                  fontSize: 10, color: '#9ca3af', letterSpacing: 2,
-                  marginBottom: 8, textAlign: 'center', fontFamily: FONT,
-                }}>
-                  PICK YOUR BUG
-                </div>
                 <div style={{
                   display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
                 }}>
@@ -1170,7 +1621,7 @@ function PlayerSetupScreen({
                         key={ci}
                         disabled={isTaken}
                         onClick={() => setChar(pi, ci)}
-                        title={isTaken ? 'Taken' : c.name}
+                        title={isTaken ? 'Taken' : isSelected ? 'Click to unselect' : c.name}
                         style={{
                           width: 72, height: 72, borderRadius: 14,
                           border: isSelected
@@ -1238,25 +1689,19 @@ function PlayerSetupScreen({
         </button>
         <button
           disabled={!allValid}
-          onClick={() => onStart(setups)}
+          onClick={() => onStart(setups.map(s => ({ name: s.name, charIdx: s.charIdx as number })))}
           style={{
             padding: '14px 36px', borderRadius: 14, border: 'none',
-            background: allValid ? '#0096A9' : '#e5e7eb',
+            background: allValid ? '#5F7A34' : '#e5e7eb',
             color: allValid ? 'white' : '#9ca3af',
             fontSize: 17, fontWeight: 700,
             cursor: allValid ? 'pointer' : 'not-allowed',
             fontFamily: FONT, transition: 'background 0.15s, color 0.15s',
           }}
         >
-          🌿 Start Game!
+          Start Game!
         </button>
       </div>
-
-      {!allValid && (
-        <p style={{ color: '#9ca3af', fontSize: 13, margin: 0, fontFamily: FONT }}>
-          All players need a name to continue
-        </p>
-      )}
     </div>
   );
 }
@@ -1270,9 +1715,13 @@ function WinScreen({ winner, onRestart }: { winner: Player; onRestart: () => voi
       alignItems: 'center', justifyContent: 'center',
       gap: 20, fontFamily: FONT, textAlign: 'center',
     }}>
-      <img src={winner.img} alt={winner.name} style={{ width: 140, height: 140, objectFit: 'contain' }} />
+      <img src={winner.butterflyImg} alt={`${winner.name} the butterfly`} style={{ width: 140, height: 140, objectFit: 'contain' }} />
       <div style={{ fontSize: 46, fontWeight: 700, color: '#1a5e3a' }}>{winner.name} Wins!</div>
-      <div style={{ fontSize: 36 }}>🍃🍃🍃 🏆 🍃🍃🍃</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <LeafIcon size={30} /><LeafIcon size={30} /><LeafIcon size={30} />
+        <span style={{ fontSize: 36 }}>🏆</span>
+        <LeafIcon size={30} /><LeafIcon size={30} /><LeafIcon size={30} />
+      </div>
       <p style={{ color: '#6b7280', fontSize: 16, margin: 0, fontFamily: FONT }}>
         Blazed through all three rings of the Leaf Trail!
       </p>
@@ -1281,7 +1730,7 @@ function WinScreen({ winner, onRestart }: { winner: Player; onRestart: () => voi
         background: '#0096A9', color: 'white',
         fontSize: 20, fontWeight: 700, cursor: 'pointer',
         fontFamily: FONT, marginTop: 8,
-      }}>🌿 Play Again</button>
+      }}>Play Again</button>
     </div>
   );
 }

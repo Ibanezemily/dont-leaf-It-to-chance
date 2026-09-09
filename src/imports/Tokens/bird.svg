@@ -1,0 +1,36 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="225.726" height="182.998" viewBox="0 0 225.726 182.998" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Bird" filter="url(#filter0_dng_0_4)">
+<path d="M168.319 37.2331C163.251 30.4161 155.146 26 146.01 26C130.654 26 118.206 38.472 118.206 53.8571C118.206 56.3903 118.545 58.8442 119.178 61.1768C119.29 61.5894 119.14 62.0311 118.792 62.2796L30.4748 125.354C30.473 125.356 30.4728 125.358 30.4744 125.36C30.476 125.361 30.4757 125.364 30.4738 125.365C28.9824 126.365 28 128.067 28 130C28 133.077 30.4289 135 33.5 135C34.153 135 36.84 134.457 37.4221 134.25C36 137 37.5 140.5 40.9749 140.524C42.8766 140.536 44.3897 139.383 45.0239 139.131C44.5 141.5 46 144 49.5 144.5L110.792 148.571C153.719 152.84 186.308 124.839 176.902 82.6427L173.081 65.2871C172.938 64.6378 173.457 64.0324 174.12 64.074L192.623 65.2348C193.618 65.2972 194.082 64.026 193.281 63.4331L176.804 51.231C176.349 50.894 176.264 50.2468 176.617 49.8041L191.676 30.9111C192.314 30.1115 191.482 28.9838 190.53 29.3566L169.512 37.5841C169.082 37.7523 168.595 37.6034 168.319 37.2331Z" fill="#86A2FF"/>
+<path d="M146.01 18.5C155.802 18.5001 164.658 22.4989 171.043 28.9297L187.796 22.373C195.889 19.2049 202.958 28.7896 197.541 35.5859L186.679 49.2119L197.744 57.4062C204.55 62.446 200.605 73.2499 192.153 72.7197L182.26 72.0986L184.223 81.0107L184.459 82.1074C189.246 105.087 182.822 124.97 168.643 138.464C154.456 151.965 133.333 158.31 110.205 156.048L49.0029 151.983L48.7197 151.965L48.4395 151.925C45.485 151.503 42.6814 150.229 40.5957 148.016C36.3623 147.877 32.837 145.622 30.9248 142.266C28.6976 141.861 26.5102 140.914 24.665 139.303C22.0942 137.058 20.596 133.868 20.5049 130.342L20.5 130L20.5068 129.576C20.6399 125.405 22.7322 121.729 25.8682 119.438C25.9531 119.373 26.0384 119.306 26.127 119.243L111.024 58.6113C110.815 57.0547 110.706 55.4676 110.706 53.8574C110.706 34.3439 126.499 18.5 146.01 18.5ZM24.5977 130.021C24.5268 129.932 24.4597 129.84 24.3936 129.749C24.4597 129.84 24.5268 129.932 24.5977 130.021ZM24.1621 129.411C24.221 129.503 24.2804 129.594 24.3438 129.684C24.2804 129.594 24.221 129.503 24.1621 129.411Z" stroke="white" stroke-width="15"/>
+</g>
+<defs>
+<filter id="filter0_dng_0_4" x="0" y="0" width="225.726" height="182.998" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="2" dy="4"/>
+<feGaussianBlur stdDeviation="7.5"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_4"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.3333333432674408 0.3333333432674408" stitchTiles="stitch" numOctaves="3" result="noise" seed="3473" />
+<feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+<feComponentTransfer in="alphaNoise" result="coloredNoise1">
+<feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+<feFlood flood-color="#FFFFFF" result="color1Flood" />
+<feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+<feMerge result="effect2_noise_0_4">
+<feMergeNode in="shape" />
+<feMergeNode in="color1" />
+</feMerge>
+<feBlend mode="normal" in="effect2_noise_0_4" in2="effect1_dropShadow_0_4" result="effect2_noise_0_4"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.10204081237316132 0.10204081237316132" numOctaves="3" seed="5466" />
+<feDisplacementMap in="effect2_noise_0_4" scale="3" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%" />
+<feMerge result="effect3_texture_0_4">
+<feMergeNode in="displacedImage"/>
+</feMerge>
+</filter>
+</defs>
+</svg>

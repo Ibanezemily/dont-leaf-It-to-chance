@@ -1,5 +1,9 @@
 {
+  "title": "Don't Leaf It To Chance",
   "description": "Engage in a unique circular roll-and-move game that challenges players to strategize as they navigate from the center outward, perfect for family fun.",
+  "icons": {
+    "icon": "favicon.svg"
+  },
   "robots": {
     "index": false
   },
