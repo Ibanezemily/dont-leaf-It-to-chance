@@ -52,3 +52,38 @@ body,
 .leaf-pop {
   animation: leafPop 0.4s ease-out forwards;
 }
+
+/* Gentle hop when a caterpillar token moves to a new board space. Split into
+   two layers so a multi-space walk glides rather than stutters at each tile:
+   - .token-hop-move (outer <g>) carries the actual travel via --hop-dx/-dy
+     (set inline per hop). Its easing is chosen per hop in App.tsx — ease-in
+     leaving the start, linear through the middle hops (so one hop's landing
+     speed matches the next hop's takeoff speed instead of decelerating to a
+     stop and re-accelerating at every tile), ease-out into the final tile.
+   - .token-hop-bounce (the token image inside it) is the actual "hop" arc —
+     lift + squash/stretch — and always plays the same regardless, since the
+     bounce should look identical whichever leg of the walk it's on.
+   fill-box keeps the bounce centred on the token regardless of board position. */
+@keyframes hopMove {
+  from { translate: 0px 0px; }
+  to   { translate: var(--hop-dx, 0px) var(--hop-dy, 0px); }
+}
+@keyframes hopBounce {
+  0%   { transform: translateY(0)     scale(1, 1);     }
+  30%  { transform: translateY(-9px)  scale(1.06, 0.94); }
+  55%  { transform: translateY(-13px) scale(0.97, 1.05); }
+  80%  { transform: translateY(-2px)  scale(1.02, 0.98); }
+  100% { transform: translateY(0)     scale(1, 1);     }
+}
+
+.token-hop-move {
+  /* Duration mirrors the App.tsx HOP_MS constant; timing-function is set
+     inline per hop (see triggerHop) and overrides this ease-in-out default. */
+  animation: hopMove 0.32s ease-in-out;
+}
+
+.token-hop-bounce {
+  animation: hopBounce 0.32s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}

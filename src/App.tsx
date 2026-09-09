@@ -96,12 +96,44 @@ const CHARS = [
 ];
 
 // ── Leaf icon (Figma leaf glyph, used in place of the 🍃 emoji) ────────────
-function LeafIcon({ size = 20, style }: { size?: number; style?: CSSProperties }) {
+function LeafIcon({ size = 20, style, className }: { size?: number; style?: CSSProperties; className?: string }) {
   return (
     <img
-      src={leafIcon} alt=""
+      src={leafIcon} alt="" className={className}
       style={{ width: size, height: size * (53.5513 / 30.6442), objectFit: 'contain', display: 'inline-block', ...style }}
     />
+  );
+}
+
+// ── Leaf-gain flourish ───────────────────────────────────────────────────
+// A one-shot feedback animation triggered by an actual leaf gain (correct
+// trivia, a "keep as leaf" card, a successful steal) — not a decorative loop.
+// The leaf starts big at the middle of the screen, then shrinks and flies
+// into the player's card; landing there triggers a brief pop (see .leaf-pop
+// in index.css) on the card's newest leaf.
+function FlyingLeaf({ from, to, onDone }: {
+  from: { x: number; y: number }; to: { x: number; y: number }; onDone: () => void;
+}) {
+  const [flying, setFlying] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setFlying(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const dx = to.x - from.x, dy = to.y - from.y;
+  return (
+    <div
+      onTransitionEnd={onDone}
+      style={{
+        position: 'fixed', left: from.x, top: from.y, zIndex: 200, pointerEvents: 'none',
+        transition: 'transform 0.7s cubic-bezier(0.3, 0.7, 0.4, 1), opacity 0.65s ease-in',
+        transform: flying
+          ? `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.35)`
+          : 'translate(-50%, -50%) scale(2.8)',
+        opacity: flying ? 0 : 1,
+      }}
+    >
+      <LeafIcon size={22} />
+    </div>
   );
 }
 
@@ -445,18 +477,24 @@ function TriviaCardOverlay({
         </div>
       </div>
 
-      {selected !== null && (
-        <button
-          onClick={() => onAnswer(selected)}
-          style={{
-            padding: '12px 40px', borderRadius: 12, border: 'none',
-            background: '#0096A9', color: 'white',
-            fontFamily: BOLD, fontWeight: 700, fontSize: 16, cursor: 'pointer',
-          }}
-        >
-          Next →
-        </button>
-      )}
+      {/* Always rendered (just invisible until answered) so the card doesn't
+          shift up when this slot's content appears — a conditional render
+          here changes the centered column's total height. */}
+      <button
+        onClick={() => selected !== null && onAnswer(selected)}
+        disabled={selected === null}
+        style={{
+          padding: '12px 40px', borderRadius: 12, border: 'none',
+          background: '#0096A9', color: 'white',
+          fontFamily: BOLD, fontWeight: 700, fontSize: 16,
+          cursor: selected !== null ? 'pointer' : 'default',
+          opacity: selected !== null ? 1 : 0,
+          pointerEvents: selected !== null ? 'auto' : 'none',
+          transition: 'opacity 0.2s ease',
+        }}
+      >
+        Next →
+      </button>
     </div>
   );
 }
@@ -521,18 +559,23 @@ function ActionCardOverlay({
         </div>
       </div>
 
-      {flipped && (
-        <button
-          onClick={onContinue}
-          style={{
-            padding: '12px 40px', borderRadius: 12, border: 'none',
-            background: '#0096A9', color: 'white',
-            fontFamily: BOLD, fontWeight: 700, fontSize: 16, cursor: 'pointer',
-          }}
-        >
-          Continue
-        </button>
-      )}
+      {/* Always rendered (just invisible until flipped) so the card doesn't
+          shift up when this slot's content appears. */}
+      <button
+        onClick={() => flipped && onContinue()}
+        disabled={!flipped}
+        style={{
+          padding: '12px 40px', borderRadius: 12, border: 'none',
+          background: '#0096A9', color: 'white',
+          fontFamily: BOLD, fontWeight: 700, fontSize: 16,
+          cursor: flipped ? 'pointer' : 'default',
+          opacity: flipped ? 1 : 0,
+          pointerEvents: flipped ? 'auto' : 'none',
+          transition: 'opacity 0.2s ease',
+        }}
+      >
+        Continue
+      </button>
     </div>
   );
 }
@@ -620,7 +663,100 @@ export default function App() {
   const ivRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const usedCardIdx = useRef(new Set<number>());
 
+  // Leaf-gain flourish state — see FlyingLeaf above.
+  const [leafFlights, setLeafFlights] = useState<Array<{ key: number; from: { x: number; y: number }; to: { x: number; y: number }; playerId: number }>>([]);
+  const leafFlightId = useRef(0);
+  const [justGained, setJustGained] = useState<Record<number, boolean>>({});
+  const playerCardRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
   const addLog = (msg: string) => setLogs(p => [msg, ...p].slice(0, 5));
+
+  // Send a leaf flying from the middle of the screen into playerId's card.
+  const flyLeafToPlayer = (playerId: number) => {
+    const targetEl = playerCardRefs.current[playerId];
+    if (!targetEl) return; // card not mounted (e.g. mid-transition) — skip the flourish
+    const toRect = targetEl.getBoundingClientRect();
+    const to = { x: toRect.left + toRect.width / 2, y: toRect.top + toRect.height / 2 };
+    const from = { x: window.innerWidth / 2, y: window.innerHeight * 0.35 };
+    setLeafFlights(prev => [...prev, { key: ++leafFlightId.current, from, to, playerId }]);
+  };
+
+  // Flight has landed — clear it and pop the card's newest leaf briefly.
+  const landLeafFlight = (flightKey: number, playerId: number) => {
+    setLeafFlights(prev => prev.filter(f => f.key !== flightKey));
+    setJustGained(prev => ({ ...prev, [playerId]: true }));
+    setTimeout(() => {
+      setJustGained(prev => { const { [playerId]: _drop, ...rest } = prev; return rest; });
+    }, 450);
+  };
+
+  // A gentle hop on the board token whenever it lands on a space — see
+  // .token-hop in index.css. HOP_MS must match the animation's own duration
+  // so a walked sequence (below) lands each hop just as the next one starts.
+  // Passing dx/dy carries the token across to the next tile as part of the
+  // hop's arc (via CSS vars --hop-dx/--hop-dy) instead of snapping there —
+  // without this a multi-space walk read as teleport-then-bounce.
+  const HOP_MS = 320;
+  const [hopping, setHopping] = useState<Record<number, boolean>>({});
+  const [hopDelta, setHopDelta] = useState<Record<number, { dx: number; dy: number; easing: string }>>({});
+  // `easing` shapes the travel layer only (see .token-hop-move in index.css):
+  // 'ease-in-out' for a lone hop, 'ease-in' leaving the start of a walk,
+  // 'linear' through its middle hops, 'ease-out' landing on the last one —
+  // so consecutive hops hand off at matching speed instead of each one
+  // decelerating to a dead stop and re-accelerating into the next.
+  const triggerHop = (playerId: number, dx = 0, dy = 0, easing = 'ease-in-out') => {
+    setHopDelta(prev => ({ ...prev, [playerId]: { dx, dy, easing } }));
+    setHopping(prev => ({ ...prev, [playerId]: false }));
+    requestAnimationFrame(() => {
+      setHopping(prev => ({ ...prev, [playerId]: true }));
+      setTimeout(() => {
+        setHopping(prev => { const { [playerId]: _drop, ...rest } = prev; return rest; });
+      }, HOP_MS);
+    });
+  };
+
+  // Walking a dice roll or Tailwind card: the token hops tile-by-tile along
+  // its ring rather than teleporting straight to the destination. `moving`
+  // gates the Roll button/next-turn flow until the walk (and its landing
+  // logic) finishes; `walkedPos` overrides that one player's rendered
+  // position for the duration — the real ringIdx/seg only commits on arrival.
+  // Each step renders at the tile being hopped FROM; the CSS arc (driven by
+  // triggerHop's dx/dy) carries it visually to the next tile, and the base
+  // position only jumps there once the arc has actually arrived.
+  const [moving, setMoving] = useState(false);
+  const [walkedPos, setWalkedPos] = useState<{ playerId: number; ring: number; seg: number } | null>(null);
+
+  const posOf = (ring: number, seg: number) => ring < 0 ? { x: CX, y: CY } : tileXY(ring, seg);
+
+  const walkToken = (
+    playerId: number, ring: number, fromRing: number, fromSeg: number,
+    path: number[], onArrive: () => void,
+  ) => {
+    setMoving(true);
+    let curRing = fromRing, curSeg = fromSeg;
+    let i = 0;
+    const step = () => {
+      const nextSeg = path[i];
+      const from = posOf(curRing, curSeg);
+      const to = posOf(ring, nextSeg);
+      const isFirst = i === 0, isLast = i === path.length - 1;
+      const easing = isFirst && isLast ? 'ease-in-out' : isFirst ? 'ease-in' : isLast ? 'ease-out' : 'linear';
+      setWalkedPos({ playerId, ring: curRing, seg: curSeg });
+      triggerHop(playerId, to.x - from.x, to.y - from.y, easing);
+      setTimeout(() => {
+        curRing = ring; curSeg = nextSeg;
+        i++;
+        if (i < path.length) {
+          step();
+        } else {
+          setWalkedPos(null);
+          setMoving(false);
+          onArrive();
+        }
+      }, HOP_MS);
+    };
+    step();
+  };
 
   const startGame = (configs: Array<{ name: string; charIdx: number }>) => {
     const built = configs.map((cfg, i) => ({
@@ -630,13 +766,14 @@ export default function App() {
     setPlayers(built);
     setCurIdx(0); setDieVal(1); setTurnState('idle'); setCardOverlayOpen(false);
     setActionCard(null); setActionCardOpen(false); setTokens({}); setPendingTrap(null);
+    setMoving(false); setWalkedPos(null);
     usedCardIdx.current.clear();
     setLogs([`${built[0].name} goes first!`]);
     setPhase('play');
   };
 
   const doRoll = () => {
-    if (rolling || turnState !== 'idle') return;
+    if (rolling || moving || turnState !== 'idle') return;
     setRolling(true);
     ivRef.current = setInterval(() => setDieVal(Math.ceil(Math.random() * 6)), 70);
     setTimeout(() => {
@@ -700,22 +837,21 @@ export default function App() {
 
   const processMove = (roll: number) => {
     const p = players[curIdx];
-    let ri = p.ringIdx, seg = p.seg;
+    const ri = p.ringIdx < 0 ? 0 : p.ringIdx;
+    const n = RING_SEGS[ri];
+    // Entering from the center starts the count at tile 0; already on the
+    // ring, it continues from the current tile — either way, one hop per space.
+    const startSeg = p.ringIdx < 0 ? 0 : p.seg;
+    const path = Array.from({ length: roll }, (_, i) => (startSeg + i + 1) % n);
+    const seg = path[path.length - 1];
 
-    if (p.ringIdx === -1) {
-      ri = 0;
-      seg = roll % RING_SEGS[0];
-      addLog(`${p.name} enters Ring 1, tile ${seg + 1}!`);
-    } else {
-      const n = RING_SEGS[p.ringIdx];
-      seg = (p.seg + roll) % n;
-      addLog(`${p.name} rolled ${roll} → tile ${seg + 1}`);
-    }
+    if (p.ringIdx === -1) addLog(`${p.name} enters Ring 1, tile ${seg + 1}!`);
+    else addLog(`${p.name} rolled ${roll} → tile ${seg + 1}`);
 
-    setPlayers(prev => prev.map((pl, i) =>
-      i === curIdx ? { ...pl, ringIdx: ri, seg } : pl
-    ));
-    resolveLanding(ri, seg);
+    walkToken(p.id, ri, p.ringIdx, p.seg, path, () => {
+      setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, ringIdx: ri, seg } : pl));
+      resolveLanding(ri, seg);
+    });
   };
 
   // Extra movement granted by an action card (e.g. Tailwind's +2 spaces).
@@ -723,10 +859,13 @@ export default function App() {
     const p = players[curIdx];
     const ri = p.ringIdx < 0 ? 0 : p.ringIdx;
     const segCount = RING_SEGS[ri];
-    const seg = (p.seg + n) % segCount;
+    const path = Array.from({ length: n }, (_, i) => (p.seg + i + 1) % segCount);
+    const seg = path[path.length - 1];
     addLog(`${p.name} rides the tailwind ${n} spaces ahead → tile ${seg + 1}`);
-    setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, ringIdx: ri, seg } : pl));
-    resolveLanding(ri, seg);
+    walkToken(p.id, ri, ri, p.seg, path, () => {
+      setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, ringIdx: ri, seg } : pl));
+      resolveLanding(ri, seg);
+    });
   };
 
   const finishAfterCard = (p: Player, leaves: number) => {
@@ -744,6 +883,7 @@ export default function App() {
         i === curIdx ? { ...pl, leaves: newLeaves } : pl
       ));
       addLog(`${p.name} correct! +1 🍃 (${newLeaves} total)`);
+      flyLeafToPlayer(p.id);
     } else {
       addLog(`${p.name} wrong — no leaf this time.`);
     }
@@ -762,6 +902,7 @@ export default function App() {
         const newLeaves = p.leaves + 1;
         setPlayers(prev => prev.map((pl, i) => i === curIdx ? { ...pl, leaves: newLeaves } : pl));
         addLog(`${p.name} keeps "${actionCard.title}" as a leaf card! (+1 🍃)`);
+        flyLeafToPlayer(p.id);
         setActionCard(null);
         finishAfterCard(p, newLeaves);
         break;
@@ -840,6 +981,7 @@ export default function App() {
         return pl;
       }));
       addLog(`${p.name} took a leaf from ${target.name}!`);
+      flyLeafToPlayer(p.id);
       finishAfterCard(p, p.leaves + 1);
     }
   };
@@ -864,6 +1006,7 @@ export default function App() {
         i === curIdx ? { ...pl, ringIdx: ring, seg, leaves: 0 } : pl
       ));
       addLog(`${p.name} crossed the bridge to Ring ${ring + 1}! 🌿`);
+      triggerHop(p.id);
       setTurnState('moved');
     }
   };
@@ -905,9 +1048,13 @@ export default function App() {
   const curGate = cur ? gateAt(cur.ringIdx, cur.seg) : undefined;
   const gateToFinish = curGate?.to === 'finish';
 
+  // While a token is walking to its destination, render it at its current
+  // hop stop (walkedPos) instead of its committed ringIdx/seg.
   const groups = new Map<string, Player[]>();
   players.forEach(p => {
-    const key = p.ringIdx < 0 ? 'center' : p.ringIdx >= 3 ? 'done' : `${p.ringIdx}-${p.seg}`;
+    const ring = walkedPos?.playerId === p.id ? walkedPos.ring : p.ringIdx;
+    const seg = walkedPos?.playerId === p.id ? walkedPos.seg : p.seg;
+    const key = ring < 0 ? 'center' : ring >= 3 ? 'done' : `${ring}-${seg}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(p);
   });
@@ -921,10 +1068,13 @@ export default function App() {
     }}>
       {!manualOpen && <InfoIconButton onClick={() => setManualOpen(true)} />}
       {manualOpen && <GameManualModal onClose={() => setManualOpen(false)} />}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', width: '100%', maxWidth: BOARD_W }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: 1180 }}>
+
+        {/* ── Board + sidebar — board bigger and to the left, dice/deck to the right ── */}
+        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
         {/* ── Board SVG ─────────────────────────────────────────── */}
-        <div style={{ position: 'relative', width: '100%' }}>
+        <div style={{ position: 'relative', flex: '1 1 560px', minWidth: 420, maxWidth: 900 }}>
           {turnState === 'placingToken' && pendingTrap && (
             <div style={{
               position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
@@ -940,13 +1090,46 @@ export default function App() {
               zIndex: 5, background: '#0096A9', color: 'white', fontFamily: FONT, fontWeight: 700,
               fontSize: 15, padding: '10px 22px', borderRadius: 14, whiteSpace: 'nowrap',
             }}>
-              Choose a player below to take a leaf from
+              choose a player to take a leaf from
             </div>
           )}
         <svg
           viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}
           style={{ display: 'block', width: '100%', height: 'auto', background: PAGE_BG, borderRadius: 20 }}
         >
+          {/* ── Paper-grain filters ──────────────────────────────
+              The Figma-exported ring bands, splats and scenery all carry a
+              speckle + wobbly-edge "grain" filter baked into their SVGs. Our
+              own flat shapes (blank tiles, grass blades) don't come from an
+              export, so these two filters give them the same hand-drawn,
+              textured feel instead of looking flat and vector-perfect. */}
+          <defs>
+            <filter id="tileGrain" x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
+              {/* A fine 5-bucket-wide alternating table (the first attempt) produced
+                  dust too small to survive at a 51px tile's on-screen size — it read
+                  as a fringe around the rim (where anti-aliasing gives it something
+                  to blend with) rather than texture across the fill. Figma's own
+                  ring-band grain uses one wide contiguous threshold band instead, so
+                  the noise resolves into a handful of visible flecks; matched here. */}
+              <feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="3" seed="8" result="noise" />
+              <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+              <feComponentTransfer in="alphaNoise" result="speckle">
+                <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" />
+              </feComponentTransfer>
+              <feComposite in="speckle" in2="SourceGraphic" operator="in" result="speckleClipped" />
+              <feFlood floodColor="#c9e2a8" result="speckColor" />
+              <feComposite in="speckColor" in2="speckleClipped" operator="in" result="speck" />
+              <feMerge>
+                <feMergeNode in="SourceGraphic" />
+                <feMergeNode in="speck" />
+              </feMerge>
+            </filter>
+            <filter id="bladeGrain" x="-50%" y="-50%" width="200%" height="200%" colorInterpolationFilters="sRGB">
+              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="11" result="wobble" />
+              <feDisplacementMap in="SourceGraphic" in2="wobble" scale="1.4" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+
           {/* ── Figma artwork ─────────────────────────────────────
               Ring bands, the three "finish" splats and the scenery, each placed
               at its Figma position. The bridges and their "3 🍃" badges are held
@@ -963,6 +1146,7 @@ export default function App() {
               x={b.cx - BLADE_W / 2} y={b.cy - BLADE_H / 2}
               width={BLADE_W} height={BLADE_H} rx={BLADE_RX}
               fill={BLADE_COLOR} stroke={BLADE_COLOR} strokeWidth={BLADE_RX}
+              filter="url(#bladeGrain)"
               transform={b.rot ? `rotate(${b.rot} ${b.cx} ${b.cy})` : undefined}
             />
           ))}
@@ -978,6 +1162,7 @@ export default function App() {
             <text key={`finish-${i}`} x={f.x} y={f.y}
               textAnchor="middle" dominantBaseline="central"
               fontSize={14} fill="white"
+              stroke="#E65558" strokeWidth={2.5} paintOrder="stroke"
               fontFamily={FONT} style={{ userSelect: 'none', fontWeight: 700 }}>
               finish
             </text>
@@ -998,8 +1183,9 @@ export default function App() {
                   onMouseLeave={isPlaceable ? () => setHoverTile(prev => prev === tileKey ? null : prev) : undefined}
                   style={{ cursor: isPlaceable ? 'pointer' : 'default' }}
                 >
-                  {/* Dashed invite ring while choosing where to place a trap token */}
-                  {isPlaceable && (
+                  {/* Dashed spinning ring only on the tile currently hovered — showing it on
+                      every placeable tile at once was too busy. */}
+                  {isPlaceable && hoverTile === tileKey && (
                     <circle cx={t.x} cy={t.y} r={TILE_R + 6} fill="none"
                       stroke="white" strokeWidth={2.5} strokeDasharray="4 4">
                       <animateTransform attributeName="transform" type="rotate"
@@ -1013,6 +1199,7 @@ export default function App() {
                       fill={isTrivia ? TILE_TRIVIA_FILL : TILE_PLAIN_FILL}
                       stroke={isTrivia ? '#ffffff' : TILE_PLAIN_FILL}
                       strokeWidth={2}
+                      filter={isTrivia ? undefined : 'url(#tileGrain)'}
                     />
                     {isTrivia && (
                       <>
@@ -1028,9 +1215,15 @@ export default function App() {
                       </>
                     )}
                   </g>
-                  {/* Light overlay previewing where the token will land */}
-                  {isPlaceable && hoverTile === tileKey && (
-                    <circle cx={t.x} cy={t.y} r={TILE_R} fill="white" opacity={0.45} style={{ pointerEvents: 'none' }} />
+                  {/* Faint preview of the actual predator/token on the hovered tile */}
+                  {isPlaceable && hoverTile === tileKey && pendingTrap && (
+                    <image
+                      href={pendingTrap.tokenImg}
+                      x={t.x - TILE_R} y={t.y - TILE_R}
+                      width={TILE_R * 2} height={TILE_R * 2}
+                      opacity={0.45}
+                      style={{ pointerEvents: 'none' }}
+                    />
                   )}
                   {/* Trap token sitting on this space */}
                   {tok && (
@@ -1071,36 +1264,39 @@ export default function App() {
                 dx = off * Math.cos(angle); dy = off * Math.sin(angle);
               }
               const tx = base.x + dx, ty = base.y + dy;
-              const active = p.id === curIdx;
               const tokenSz = TILE_SZ + 5;
               const half = tokenSz / 2;
               return (
                 <g key={p.id}>
-                  {/* Active player ring */}
-                  {active && (
-                    <circle cx={tx} cy={ty} r={half + 6} fill="none"
-                      stroke={p.color} strokeWidth={3.5} />
-                  )}
-                  {/* Caterpillar sticker image */}
-                  <image
-                    href={p.img}
-                    x={tx - half} y={ty - half}
-                    width={tokenSz} height={tokenSz}
-                  />
+                  {/* Caterpillar sticker — hops gently when it moves to a new space, split
+                      into two layers so a multi-space walk glides instead of stuttering:
+                      this outer <g> carries the actual travel (--hop-dx/--hop-dy, eased
+                      per-hop below) while the inner image plays the same bounce arc
+                      every time regardless of which leg of the walk it's on. */}
+                  <g
+                    className={hopping[p.id] ? 'token-hop-move' : undefined}
+                    style={hopping[p.id] ? ({
+                      '--hop-dx': `${hopDelta[p.id]?.dx ?? 0}px`,
+                      '--hop-dy': `${hopDelta[p.id]?.dy ?? 0}px`,
+                      animationTimingFunction: hopDelta[p.id]?.easing,
+                    } as CSSProperties) : undefined}
+                  >
+                    <image
+                      href={p.img}
+                      x={tx - half} y={ty - half}
+                      width={tokenSz} height={tokenSz}
+                      className={hopping[p.id] ? 'token-hop-bounce' : undefined}
+                    />
+                  </g>
                 </g>
               );
             });
           })}
         </svg>
         </div>
-        {/* ── Controls + players — sit under the landscape board ─ */}
-        <div style={{
-          display: 'flex', gap: 16, alignItems: 'flex-start',
-          flexWrap: 'wrap', justifyContent: 'center', width: '100%',
-        }}>
 
-        {/* ── Sidebar ──────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 256 }}>
+        {/* ── Sidebar — die/turn controls + card deck, to the right of the board ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 256, flexShrink: 0 }}>
 
           {/* Die + roll/turn actions */}
           <div style={{ background: 'white', borderRadius: 20, padding: 16 }}>
@@ -1112,14 +1308,14 @@ export default function App() {
               <Die val={dieVal} rolling={rolling} />
             </div>
             {turnState === 'idle' && (
-              <button onClick={doRoll} disabled={rolling} style={{
+              <button onClick={doRoll} disabled={rolling || moving} style={{
                 width: '100%', padding: '12px 0', borderRadius: 14, border: 'none',
-                background: rolling ? '#e5e7eb' : '#5F7A34',
-                color: rolling ? '#9ca3af' : 'white',
-                fontSize: 17, fontWeight: 700, cursor: rolling ? 'not-allowed' : 'pointer',
+                background: (rolling || moving) ? '#e5e7eb' : '#5F7A34',
+                color: (rolling || moving) ? '#9ca3af' : 'white',
+                fontSize: 17, fontWeight: 700, cursor: (rolling || moving) ? 'not-allowed' : 'pointer',
                 fontFamily: FONT,
               }}>
-                {rolling ? 'Rolling…' : 'Roll Dice!'}
+                {rolling ? 'Rolling…' : moving ? 'Hopping…' : 'Roll Dice!'}
               </button>
             )}
             {turnState === 'moved' && (
@@ -1143,7 +1339,7 @@ export default function App() {
             )}
             {turnState === 'chooseTarget' && (
               <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 13, color: '#0096A9', fontWeight: 700, fontFamily: FONT }}>
-                Choose a player below to take a leaf from
+                choose a player to take a leaf from
               </div>
             )}
             {turnState === 'gate' && (
@@ -1169,34 +1365,28 @@ export default function App() {
             );
           })()}
 
-          {/* Choose-target picker for steal-type action cards */}
-          {turnState === 'chooseTarget' && (
-            <div style={{ background: 'white', borderRadius: 20, padding: 16, border: '2px solid #0096A9', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {players.map((pl, i) => i !== curIdx && (
-                <button key={pl.id} onClick={() => stealFrom(i)} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px', borderRadius: 12, border: `2px solid ${pl.color}55`,
-                  background: pl.color + '10', cursor: 'pointer', textAlign: 'left',
-                }}>
-                  <img src={pl.img} alt={pl.name} style={{ width: 28, height: 28, objectFit: 'contain' }} />
-                  <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 14, color: '#1a5e3a' }}>{pl.name}</span>
-                  <span style={{ marginLeft: 'auto', fontFamily: FONT, fontSize: 12, color: '#9ca3af' }}>{pl.leaves} 🍃</span>
-                </button>
-              ))}
-            </div>
-          )}
-
+        </div>
         </div>
 
         {/* ── Players ─────────────────────────────────────────── */}
+        {/* During a steal (chooseTarget), the player cards themselves become the
+            picker — no separate selection list. */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
-          {players.map((p, i) => (
-            <div key={p.id} style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
-              background: 'white', borderRadius: 16, padding: '12px 16px',
-              border: '3px solid transparent',
-              width: 160, opacity: p.ringIdx >= 3 ? 0.4 : 1,
-            }}>
+          {players.map((p, i) => {
+            const selectable = turnState === 'chooseTarget' && i !== curIdx;
+            return (
+            <div
+              key={p.id}
+              ref={el => { playerCardRefs.current[p.id] = el; }}
+              onClick={selectable ? () => stealFrom(i) : undefined}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
+                background: 'white', borderRadius: 16, padding: '12px 16px',
+                border: selectable ? '3px solid #0096A9' : '3px solid transparent',
+                cursor: selectable ? 'pointer' : 'default',
+                width: 160, opacity: p.ringIdx >= 3 ? 0.4 : 1,
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
                   width: 52, height: 52, borderRadius: 12,
@@ -1219,14 +1409,25 @@ export default function App() {
               </div>
               <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 {Array.from({ length: Math.max(3, p.leaves) }, (_, l) => (
-                  <LeafIcon key={l} size={12} style={{ filter: l < p.leaves ? 'none' : 'grayscale(1) opacity(0.22)' }} />
+                  <LeafIcon
+                    key={l} size={12}
+                    className={justGained[p.id] && l === p.leaves - 1 ? 'leaf-pop' : undefined}
+                    style={{ filter: l < p.leaves ? 'none' : 'grayscale(1) opacity(0.22)' }}
+                  />
                 ))}
               </div>
             </div>
-          ))}
-        </div>
+          );})}
         </div>
       </div>
+
+      {/* ── Leaf-gain flourish ───────────────────────────────────── */}
+      {leafFlights.map(f => (
+        <FlyingLeaf
+          key={f.key} from={f.from} to={f.to}
+          onDone={() => landLeafFlight(f.key, f.playerId)}
+        />
+      ))}
 
       {/* ── Trivia card overlay — centred full-screen flip ───────── */}
       {cardOverlayOpen && question && (
